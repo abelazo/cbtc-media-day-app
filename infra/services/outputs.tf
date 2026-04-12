@@ -17,3 +17,8 @@ output "users_table_name" {
   description = "Name of the users DynamoDB table"
   value       = aws_dynamodb_table.users.name
 }
+
+output "signing_profile_name" {
+  description = "Name of the AWS Signer signing profile"
+  value       = aws_signer_signing_profile.dev.name
+}
