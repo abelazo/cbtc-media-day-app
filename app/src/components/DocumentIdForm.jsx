@@ -27,26 +27,13 @@ export default function DocumentIdForm() {
             });
 
             if (response.ok) {
-                // Response is a base64-encoded zip file
-                const base64Content = await response.text();
-
-                // Decode base64 to binary
-                const binaryString = atob(base64Content);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                // Create blob and trigger download
-                const blob = new Blob([bytes], { type: 'application/zip' });
-                const url = window.URL.createObjectURL(blob);
+                const data = await response.json();
                 const link = document.createElement('a');
-                link.href = url;
-                link.download = 'cbtc-media-day-2025.zip';
+                link.href = data.download_url;
+                link.download = `${normalizedName}.zip`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
 
                 setMessage({ type: 'success', text: '✅ ¡Descarga completada! Revisa tu carpeta de descargas.' });
             } else if (response.status === 404) {

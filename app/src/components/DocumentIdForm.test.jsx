@@ -27,22 +27,11 @@ describe('DocumentIdForm', () => {
     });
 
     test('handles successful download', async () => {
-        // Mock base64 content (simplified for testing)
-        const base64Content = btoa('fake zip content');
-
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
-            text: async () => base64Content
+            json: async () => ({ download_url: 'https://s3.amazonaws.com/downloads/user.zip?signed', success: true })
         });
         global.fetch = fetchMock;
-
-        // Mock DOM APIs for download
-        const createObjectURLMock = vi.fn().mockReturnValue('blob:mock-url');
-        const revokeObjectURLMock = vi.fn();
-        const originalCreateObjectURL = global.URL.createObjectURL;
-        const originalRevokeObjectURL = global.URL.revokeObjectURL;
-        global.URL.createObjectURL = createObjectURLMock;
-        global.URL.revokeObjectURL = revokeObjectURLMock;
 
         const clickMock = vi.fn();
         const mockLink = document.createElement('a');
@@ -62,24 +51,19 @@ describe('DocumentIdForm', () => {
         fireEvent.change(screen.getByLabelText(/Nombre completo/i), { target: { value: 'User' } });
         fireEvent.click(screen.getByRole('button', { name: /Enviar/i }));
 
-        // Wait for async operations and state updates
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalled();
         });
 
-        // Verify download flow
         await waitFor(() => {
             expect(document.createElement).toHaveBeenCalledWith('a');
-            expect(mockLink.download).toBe('cbtc-media-day-2025.zip');
+            expect(mockLink.href).toBe('https://s3.amazonaws.com/downloads/user.zip?signed');
+            expect(mockLink.download).toBe('user.zip');
             expect(clickMock).toHaveBeenCalled();
-            expect(createObjectURLMock).toHaveBeenCalled();
-            expect(revokeObjectURLMock).toHaveBeenCalled();
         });
 
         // Cleanup
         document.createElement = originalCreateElement;
-        global.URL.createObjectURL = originalCreateObjectURL;
-        global.URL.revokeObjectURL = originalRevokeObjectURL;
     });
 
     test('handles 404 error', async () => {

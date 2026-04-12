@@ -13,9 +13,13 @@ import zipfile
 from typing import Any
 
 import boto3
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+PRESIGNED_URL_EXPIRATION = 3600
+DOWNLOADS_PREFIX = "downloads"
 
 
 def _get_env_var(name: str) -> str:
@@ -25,12 +29,32 @@ def _get_env_var(name: str) -> str:
     return val
 
 
+def _zip_exists(s3_client, bucket_name: str, zip_key: str) -> bool:
+    try:
+        s3_client.head_object(Bucket=bucket_name, Key=zip_key)
+        return True
+    except ClientError:
+        return False
+
+
+def _generate_presigned_url(s3_client, bucket_name: str, zip_key: str, filename: str) -> str:
+    return s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": bucket_name,
+            "Key": zip_key,
+            "ResponseContentDisposition": f"attachment; filename={filename}",
+        },
+        ExpiresIn=PRESIGNED_URL_EXPIRATION,
+    )
+
+
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Lambda handler for retrieving content.
 
     Expects 'Authorization' header with base64 encoded "DNI:Name".
-    Returns a zip file containing the user's photos.
+    Returns a presigned URL to download a zip file containing the user's photos.
     """
     logger.info(f"Received event: {json.dumps(event)}")
 
@@ -83,28 +107,35 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "body": json.dumps({"message": "No photos associated to this player", "success": False}),
             }
 
-        logger.info("Retrieving photos from S3")
         s3_keys = item["photos"]
-
         bucket_name = _get_env_var("CONTENT_BUCKET_NAME")
         s3_client = boto3.client("s3")
+
+        zip_key = f"{DOWNLOADS_PREFIX}/{name}.zip"
+        zip_filename = f"{name}.zip"
+
+        # Check if ZIP already exists (cache)
+        if _zip_exists(s3_client, bucket_name, zip_key):
+            logger.info(f"ZIP already exists at {zip_key}, returning cached presigned URL")
+            presigned_url = _generate_presigned_url(s3_client, bucket_name, zip_key, zip_filename)
+            return {
+                "statusCode": 200,
+                "headers": headers,
+                "body": json.dumps({"download_url": presigned_url, "success": True}),
+            }
 
         logger.info(f"Creating ZIP file with {len(s3_keys)} photos")
         zip_buffer = io.BytesIO()
         successful_photos = 0
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            # Iterate through all photos
             for s3_key in s3_keys:
                 try:
                     logger.info(f"Retrieving photo: {s3_key}")
                     s3_response = s3_client.get_object(Bucket=bucket_name, Key=s3_key)
                     photo_content = s3_response["Body"].read()
 
-                    # Extract filename from S3 key (e.g., "TestUser/photo1.jpg" -> "photo1.jpg")
                     filename = s3_key.split("/")[-1]
-
-                    # Add photo to zip file
                     zip_file.writestr(filename, photo_content)
                     successful_photos += 1
                     logger.info(f"Successfully added photo: {filename}")
@@ -116,7 +147,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     logger.error(f"Error retrieving photo {s3_key}: {str(e)}, skipping")
                     continue
 
-        # Check if any photos were successfully retrieved
         if successful_photos == 0:
             logger.warning("No photos were successfully retrieved for user")
             return {
@@ -127,22 +157,24 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         logger.info(f"Successfully retrieved {successful_photos} out of {len(s3_keys)} photos")
 
-        # Get zip file content
+        # Upload ZIP to S3
         zip_buffer.seek(0)
-        zip_content = zip_buffer.read()
+        logger.info(f"Uploading ZIP to s3://{bucket_name}/{zip_key}")
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=zip_key,
+            Body=zip_buffer.read(),
+            ContentType="application/zip",
+        )
 
-        logger.info("Base64 encoding ZIP content")
-        b64_content = base64.b64encode(zip_content).decode("utf-8")
+        # Generate presigned URL
+        presigned_url = _generate_presigned_url(s3_client, bucket_name, zip_key, zip_filename)
+        logger.info("Generated presigned download URL")
 
         return {
             "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": app_url,
-                "Content-Type": "application/zip",
-                "Content-Disposition": "attachment; filename=cbtc-media-day-2025.zip",
-            },
-            "body": b64_content,
-            "isBase64Encoded": True,
+            "headers": headers,
+            "body": json.dumps({"download_url": presigned_url, "success": True}),
         }
 
     except Exception as e:

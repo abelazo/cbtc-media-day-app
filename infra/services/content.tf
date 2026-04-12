@@ -10,7 +10,7 @@ resource "aws_lambda_function" "content_service" {
   handler       = "handler.lambda_handler"
   runtime       = "python3.12"
   timeout       = 30
-  memory_size   = 128
+  memory_size   = 256
 
   reserved_concurrent_executions = -1
 
@@ -77,6 +77,7 @@ resource "aws_iam_role_policy" "content_lambda_s3" {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
+          "s3:PutObject",
           "s3:ListBucket",
         ]
         Resource = [
