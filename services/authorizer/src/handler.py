@@ -120,6 +120,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         dni, name = decoded_auth.split(":", 1)
 
+        # Normalize DNI: remove leading zeros and convert to uppercase
+        dni = dni.lstrip("0").upper()
+
         if not dni or not name:
             logger.warning("Invalid authorization format - empty DNI or name")
             return generate_policy("unknown", "Deny", method_arn)
