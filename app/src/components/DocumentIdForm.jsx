@@ -72,7 +72,7 @@ export default function DocumentIdForm() {
       </div>
       <div style={{ marginBottom: "1rem" }}>
         <label htmlFor="documentId" style={{ display: "block", marginBottom: "0.5rem" }}>
-          Numero de Documento: DNI (03378357W), NIE (Y9777800P) o Pasaporte (DSA136567J) del jugador o tutores asociados
+          Numero de Documento: DNI (ej:03378357W), NIE (ej:Y9777800P) o Pasaporte (ej:DSA136567J) del jugador o tutores asociados
           <br />
           <span style={{ fontSize: "0.85em", fontStyle: "italic" }}>
             (según lo registrado en https://cbtrescantos.es)
