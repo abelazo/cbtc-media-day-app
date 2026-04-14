@@ -54,35 +54,50 @@ export default function DocumentIdForm() {
 
   return (
     <form onSubmit={handleSubmit}>
+      <p
+        style={{
+          fontSize: "0.85em",
+          fontStyle: "italic",
+          marginBottom: "1.5rem",
+          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          padding: "0.5rem 1rem",
+          borderRadius: "0.5rem",
+          borderLeft: "3px solid rgba(255, 255, 255, 0.5)",
+        }}
+      >
+        Datos según lo registrado en{" "}
+        <a
+          href="https://cbtrescantos.es"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "inherit", fontWeight: "bold" }}
+        >
+          https://cbtrescantos.es
+        </a>
+      </p>
       <div style={{ marginBottom: "1rem" }}>
         <label htmlFor="name" style={{ display: "block", marginBottom: "0.5rem" }}>
           Nombre completo y apellidos del jugador/a
-          <br />
-          <span style={{ fontSize: "0.85em", fontStyle: "italic" }}>
-            (según lo registrado en https://cbtrescantos.es)
-          </span>
         </label>
         <input
           id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          placeholder="Ej: Juan Pérez García"
           style={{ padding: "0.5rem", width: "100%" }}
         />
       </div>
       <div style={{ marginBottom: "1rem" }}>
         <label htmlFor="documentId" style={{ display: "block", marginBottom: "0.5rem" }}>
-          Numero de Documento: DNI (ej:03378357W), NIE (ej:Y9777800P) o Pasaporte (ej:DSA136567J) del jugador o tutores asociados
-          <br />
-          <span style={{ fontSize: "0.85em", fontStyle: "italic" }}>
-            (según lo registrado en https://cbtrescantos.es)
-          </span>
+          DNI, NIE o Pasaporte del jugador o tutores asociados
         </label>
         <input
           id="documentId"
           type="text"
           value={documentId}
           onChange={(e) => setDocumentId(e.target.value)}
+          placeholder="Ej: 03378357W, Y9777800P, DSA136567J"
           style={{ padding: "0.5rem", width: "100%" }}
         />
       </div>
