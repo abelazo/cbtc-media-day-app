@@ -31,8 +31,6 @@ DNI_COLUMNS = [
 ]
 
 TEAM_CODE_MAP = {
-    "FAU": "FAUT",
-    "MAU": "MAUT",
     "INCL": "Inclusion",
 }
 
