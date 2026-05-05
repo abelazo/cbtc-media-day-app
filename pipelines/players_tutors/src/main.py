@@ -197,6 +197,10 @@ def find_media_day_players_in_players_df(
     media_day_players: pd.DataFrame, players_df: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
+    media_day_players = media_day_players[
+        media_day_players["Role"].apply(lambda x: str(x).strip().isdigit() if pd.notna(x) else False)
+    ].copy()
+
     players_canonical_names = players_df["CanonicalName"].tolist()
 
     def find_matching_player(media_day_canonical_name: str) -> str | None:
@@ -231,6 +235,9 @@ def find_media_day_players_in_players_df(
     # Drop the duplicate CanonicalName column from players_df
     if "CanonicalName_player" in found_df.columns:
         found_df = found_df.drop(columns=["CanonicalName_player"])
+
+    # Replace truncated media day name with complete player name
+    found_df["CanonicalName"] = found_df["MatchedPlayerCanonicalName"]
 
     return found_df, not_found_df
 
@@ -370,8 +377,6 @@ def main():
 
     logger.info("Aggregating Tutor information and Player/Fan as membership information")
     players_df = merge_tutor_info(players_df, tutors_df)
-
-    # Filter media_day_all_df for players only (Role column contains a number)
 
     # Find media day players in players_df and print statistics
     logger.info("Aggregating CBTC membership information and Media Day players")

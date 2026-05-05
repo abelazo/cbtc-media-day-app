@@ -13,7 +13,8 @@ help:
 # Run all pipeline tests
 test-all:
     @echo "Running all pipeline tests..."
-    uv run pytest ./
+    cd player_data_uploader && uv run pytest
+    cd players_tutors && uv run pytest
     @echo "All pipeline tests passed"
 
 # Lint all pipelines

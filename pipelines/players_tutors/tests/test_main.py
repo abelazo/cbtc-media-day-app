@@ -111,7 +111,7 @@ class TestFindMediaDayPlayersInPlayersDF:
 
         assert len(found) == 1
         assert len(not_found) == 0
-        assert found["CanonicalName"].iloc[0] == "juan_garcia"
+        assert found["CanonicalName"].iloc[0] == "juan_garcia_lopez"
 
     def test_filters_only_numeric_roles(self):
         media_day_df = pd.DataFrame(

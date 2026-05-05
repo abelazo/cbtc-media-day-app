@@ -17,17 +17,18 @@ from src.main import (
 
 class TestResolveTeamDirName:
     def test_mapped_codes(self):
-        assert resolve_team_dir_name("FAU") == "FAU1"
-        assert resolve_team_dir_name("MU22") == "MU22A"
+        assert resolve_team_dir_name("FAU") == "FAUT"
+        assert resolve_team_dir_name("MAU") == "MAUT"
         assert resolve_team_dir_name("INCL") == "Inclusion"
 
     def test_unmapped_codes_return_as_is(self):
         assert resolve_team_dir_name("MA1A") == "MA1A"
+        assert resolve_team_dir_name("MU22") == "MU22"
         assert resolve_team_dir_name("FCA") == "FCA"
         assert resolve_team_dir_name("MJB") == "MJB"
 
     def test_map_has_expected_entries(self):
-        assert TEAM_CODE_MAP == {"FAU": "FAU1", "MU22": "MU22A", "INCL": "Inclusion"}
+        assert TEAM_CODE_MAP == {"FAU": "FAUT", "MAU": "MAUT", "INCL": "Inclusion"}
 
 
 class TestParseArgs:
