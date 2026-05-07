@@ -84,7 +84,8 @@ def upload_files_to_s3(file_mappings: list[tuple[str, str]], bucket: str, s3_cli
         logger.debug(f"Uploading {local_path} -> s3://{bucket}/{s3_key}")
         s3_client.upload_file(local_path, bucket, s3_key)
 
-    logger.info(f"Uploaded {len(file_mappings)} files to s3://{bucket}")
+    key_prefix = os.path.dirname(file_mappings[0][1]) + "/" if file_mappings else ""
+    logger.info(f"Uploaded {len(file_mappings)} files to {key_prefix}")
 
 
 def row_to_player_data(row: pd.Series, player_photo_keys: list[str], team_photo_keys: list[str]) -> dict:
@@ -138,6 +139,8 @@ def main(argv=None):
         df = df[df["Equipo"] == args.team]
         logger.info(f"Filtered to team {args.team}: {len(df)} rows")
 
+    if photos_bucket:
+        logger.info(f"Photos bucket: {photos_bucket}")
     s3_client = boto3.client("s3") if photos_bucket else None
 
     uploaded_teams: set[str] = set()

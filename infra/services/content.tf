@@ -10,7 +10,7 @@ resource "aws_lambda_function" "content_service" {
   handler       = "handler.lambda_handler"
   runtime       = "python3.12"
   timeout       = 30
-  memory_size   = 256
+  memory_size   = 512
 
   reserved_concurrent_executions = -1
 
