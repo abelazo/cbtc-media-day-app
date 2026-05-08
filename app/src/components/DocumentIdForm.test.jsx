@@ -8,7 +8,7 @@ describe('DocumentIdForm', () => {
         render(<DocumentIdForm />);
 
         // Use getByLabelText to encourage accessibility
-        expect(screen.getByLabelText(/Numero de Documento/i)).toBeTruthy();
+        expect(screen.getByLabelText(/DNI, NIE/i)).toBeTruthy();
         expect(screen.getByLabelText(/Nombre completo/i)).toBeTruthy();
         expect(screen.getByRole('button', { name: /Enviar/i })).toBeTruthy();
     });
@@ -16,7 +16,7 @@ describe('DocumentIdForm', () => {
     test('updates values on change', () => {
         render(<DocumentIdForm />);
 
-        const documentIdInput = screen.getByLabelText(/Numero de Documento/i);
+        const documentIdInput = screen.getByLabelText(/DNI, NIE/i);
         const nameInput = screen.getByLabelText(/Nombre completo/i);
 
         fireEvent.change(documentIdInput, { target: { value: '12345678A' } });
@@ -47,7 +47,7 @@ describe('DocumentIdForm', () => {
 
         render(<DocumentIdForm />);
 
-        fireEvent.change(screen.getByLabelText(/Numero de Documento/i), { target: { value: '123' } });
+        fireEvent.change(screen.getByLabelText(/DNI, NIE/i), { target: { value: '123' } });
         fireEvent.change(screen.getByLabelText(/Nombre completo/i), { target: { value: 'User' } });
         fireEvent.click(screen.getByRole('button', { name: /Enviar/i }));
 
@@ -66,6 +66,32 @@ describe('DocumentIdForm', () => {
         document.createElement = originalCreateElement;
     });
 
+    test('trims whitespace from documentId before encoding', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ download_url: 'https://example.com/file.zip' })
+        });
+        global.fetch = fetchMock;
+
+        const mockLink = document.createElement('a');
+        mockLink.click = vi.fn();
+        const originalCreateElement = document.createElement.bind(document);
+        document.createElement = vi.fn((tag) => tag === 'a' ? mockLink : originalCreateElement(tag));
+
+        render(<DocumentIdForm />);
+
+        fireEvent.change(screen.getByLabelText(/DNI, NIE/i), { target: { value: '  12345678A  ' } });
+        fireEvent.change(screen.getByLabelText(/Nombre completo/i), { target: { value: 'User' } });
+        fireEvent.click(screen.getByRole('button', { name: /Enviar/i }));
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+        const authHeader = fetchMock.mock.calls[0][1].headers.Authorization;
+        expect(authHeader).toBe(`Basic ${btoa('12345678A:user')}`);
+
+        document.createElement = originalCreateElement;
+    });
+
     test('handles 404 error', async () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: false,
@@ -76,7 +102,7 @@ describe('DocumentIdForm', () => {
 
         render(<DocumentIdForm />);
 
-        fireEvent.change(screen.getByLabelText(/Numero de Documento/i), { target: { value: '123' } });
+        fireEvent.change(screen.getByLabelText(/DNI, NIE/i), { target: { value: '123' } });
         fireEvent.change(screen.getByLabelText(/Nombre completo/i), { target: { value: 'User' } });
         fireEvent.click(screen.getByRole('button', { name: /Enviar/i }));
 

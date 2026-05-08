@@ -17,7 +17,7 @@ export default function DocumentIdForm() {
         .trim()
         .toLowerCase()
         .replace(/\s+/g, "_");
-      const credentials = `Basic ${btoa(`${documentId}:${normalizedName}`)}`;
+      const credentials = `Basic ${btoa(`${documentId.trim()}:${normalizedName}`)}`;
 
       const response = await fetch(`${apiUrl}/content`, {
         headers: {
