@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CBTC Media Day is a serverless AWS application for managing and distributing media day photos. It's a monorepo containing Lambda services, data pipelines, Terraform infrastructure, and a React frontend.
+CBTC Media Day is a serverless AWS application for managing and distributing media day photos. It's a monorepo containing Lambda services, Terraform infrastructure, and a React frontend.
 
 ## Build & Development Commands
 
@@ -15,7 +15,6 @@ All commands use `just` (a command runner). Run `just --list` to see all availab
 just sync-all                     # Install all Python dependencies (uv workspaces)
 just sync authorizer              # Install authorizer dependencies
 just sync content_service         # Install content_service dependencies
-just sync players_tutors          # Install players_tutors pipeline dependencies
 just app::install                 # Install frontend dependencies (bun)
 ```
 
@@ -25,10 +24,6 @@ just app::install                 # Install frontend dependencies (bun)
 just services::test-all
 just services::content::test
 just services::authorizer::test
-
-# Pipeline unit tests
-just pipelines::test-all
-just pipelines::players-tutors::test
 
 # Single test file or function (navigate to package first)
 cd services/authorizer && uv run pytest tests/test_authorizer.py::TestClass::test_fn -v
@@ -40,7 +35,6 @@ just e2e::run-story us_004        # Single user story
 
 ### Run
 ```bash
-just pipelines::players-tutors::run [ARGS]  # Run pipeline locally
 just services::authorizer::run              # Run authorizer locally
 just app::dev                               # Start frontend dev server
 ```
@@ -49,7 +43,6 @@ just app::dev                               # Start frontend dev server
 ```bash
 just services::lint-all           # ruff + black --check
 just services::format-all         # black + ruff --fix
-just pipelines::lint-all
 just app::lint
 ```
 
@@ -74,11 +67,10 @@ just app::dev
 
 ### Directory Structure
 - `services/` — Lambda functions (authorizer, content_service), each a separate uv workspace with own `pyproject.toml` + `justfile`
-- `pipelines/` — Data processing pipelines (players_tutors, player_data_uploader)
 - `infra/` — Terraform IaC split into three stacks: bootstrap, global, services
 - `app/` — React 19 + Vite + Bun frontend (single-page, one form component)
-- `tests/functional/` — E2E tests organized by user story (`us_001_test.py`, etc.)
-- `docs/user_stories/` — Feature specs
+- `tests/functional/` — E2E tests organized by user story (`us_002_test.py`, etc.)
+- `docs/user_stories/` — Feature specs (US-001 through US-005)
 
 ### Request Flow
 
@@ -106,17 +98,6 @@ The authorizer returns an IAM Allow/Deny policy plus a context dict `{username, 
 - `photos`: list of S3 keys in the content bucket
 
 Photos are stored as S3 keys, not filenames. Missing keys are skipped with a warning; the ZIP succeeds if at least one photo is retrieved.
-
-### Players/Tutors Pipeline (Non-Obvious)
-
-**Canonical name matching uses `startswith()`**: media day names are often abbreviated. The pipeline matches any CBTC membership record whose full canonical name starts with the media day attendee's canonical name (ASCII-lowercased, spaces → underscores).
-
-**Tutor deduplication**: if Tutor1 and Tutor2 are identical after matching, Tutor2 is cleared. Tutors not found in CBTC membership are marked `"not_found"` rather than left blank.
-
-**Environment variables required at runtime**:
-- `CBTC_MEDIA_DAY_PATH` — path to input CSV
-- `CBTC_ALL_PLAYERS_PATH` — path to CBTC Excel membership data
-- `CBTC_MEDIA_DAY_OUTPUT_PATH` — output CSV path
 
 ### Terraform Stack Organization
 
@@ -146,13 +127,13 @@ Tests detect LocalStack via `AWS_ENDPOINT_URL` env var. Resource names follow th
 ## Code Style
 
 - Python: 120 char line length, ruff + black
-- Tests: `*_test.py` or `test_*.py` (pytest discovers both); `pythonpath = [".", "src"]` in each `pyproject.toml`
-- Each service/pipeline is an independent uv workspace package
+- Tests: `*_test.py` or `test_*.py` (pytest discovers both); `pythonpath = [".", "libs", "services"]` in root `pyproject.toml`
+- Each service is an independent uv workspace package
 
 ## Development Methodology
 
 TDD organized around user stories:
 1. Create spec in `docs/user_stories/US-XXX.md`
 2. Write functional test in `tests/functional/us_xxx_test.py`
-3. Write unit tests in `services/<service>/tests/` or `pipelines/<pipeline>/tests/`
+3. Write unit tests in `services/<service>/tests/`
 4. Implement to pass tests

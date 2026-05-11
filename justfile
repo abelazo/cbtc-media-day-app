@@ -13,10 +13,6 @@ mod app
 [group('backend')]
 mod services
 
-# Data pipelines
-[group('pipelines')]
-mod pipelines
-
 # Functional tests
 [group('tests')]
 mod e2e 'tests'

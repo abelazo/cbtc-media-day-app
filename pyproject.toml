@@ -24,13 +24,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["services", "libs"]
+packages = ["services"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "tests" = "tests"
 
 [tool.pytest.ini_options]
-pythonpath = [".", "libs", "services"]
+pythonpath = [".", "services"]
 testpaths = ["tests", "services"]
 python_files = ["*_test.py", "test_*.py"]
 python_classes = ["Test*"]
@@ -81,7 +81,7 @@ exclude = '''
 '''
 
 [tool.coverage.run]
-source = ["services", "libs"]
+source = ["services"]
 omit = ["*/tests/*", "*/__pycache__/*", "*/.venv/*"]
 
 [tool.coverage.report]
@@ -100,5 +100,5 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["pipelines/*", "services/*"]
+members = ["services/*"]
 exclude = ["**/__pycache__"]

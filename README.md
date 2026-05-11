@@ -10,71 +10,49 @@ A serverless AWS application built with Python 3.12 and Terraform, following Tes
 
 ## Architecture
 
-This is a **monorepo** containing all services, infrastructure, shared libraries, and documentation for the CBTC Media Day application.
+This is a **monorepo** containing all services, infrastructure, and documentation for the CBTC Media Day application.
 
 ### Directory Structure
 
 ```
 /.github/workflows/   # CI/CD pipelines
-/app/                  # Frontend application (React + Vite)
-    src/               # Frontend source code
-    public/            # Public assets
-    bun.lockb         # Bun lockfile
-/docs/                 # Documentation
-    user_stories/      # User Story definitions
-    architecture/      # Architecture documentation
-    adr/              # Architectural Decision Records
-/infra/                # Terraform infrastructure as code
-    global/            # Global resources (S3, DynamoDB, IAM)
-    services/          # Service-specific infrastructure
-/pipelines/            # Data pipelines
-    <pipeline_name>/
-        src/           # Pipeline source code
-        tests/         # Unit tests for this pipeline
-        requirements.txt
-/services/              # AWS Lambda services
-    <service_name>/
-        src/           # Service source code
-        tests/         # Unit tests for this service
-        requirements.txt
+/app/                 # Frontend application (React + Vite)
+    src/              # Frontend source code
+    public/           # Public assets
+/docs/                # Documentation
+    user_stories/     # User Story definitions
+    architecture/     # Architecture documentation
+/infra/               # Terraform infrastructure as code
+    bootstrap/        # State bucket (run once)
+    global/           # Global resources (S3, DynamoDB, IAM)
+    services/         # API Gateway, Lambda, CloudWatch
+/services/            # AWS Lambda functions
+    authorizer/       # Token authorizer Lambda
+    content_service/  # Content delivery Lambda
 /tests/
-    functional/        # End-to-end functional tests per User Story
+    functional/       # End-to-end functional tests per User Story
 ```
 
 ## Development Methodology
 
-We follow **Test-Driven Development (TDD)** organized around **User Stories**.
+TDD organized around User Stories.
 
-### Workflow for Each User Story
+### Workflow
 
-1. **Create Functional Test**: Write an end-to-end test simulating the User Story behavior
-   - Location: `/tests/functional/<user_story_id>_test.py`
-
-2. **Create Unit Tests**: Write unit tests for the service implementation
-   - Location: `/services/<service>/tests/`
-
-3. **Implement Code**: Write minimal code to satisfy functional + unit tests
-
-4. **Refactor**: Keep tests green while improving code quality
-
-### Example User Story Structure
-
-Each User Story is documented in `/docs/user_stories/<user_story_id>.md` with:
-- **Title**: Clear description of the feature
-- **Description**: Context and user need
-- **Acceptance Criteria**: Must match the functional test
-- **Impact/Rationale**: Why this feature matters
+1. Create spec in `/docs/user_stories/<us_id>.md`
+2. Write functional test in `/tests/functional/<us_id>_test.py`
+3. Write unit tests in `/services/<service>/tests/`
+4. Implement to pass tests
 
 ## Technology Stack
 
 - **Runtime**: Python 3.12 (AWS Lambda)
-- **Infrastructure**: Terraform (IaC)
-- **Frontend**: React (Vite)
+- **Infrastructure**: Terraform
+- **Frontend**: React 19 + Vite
 - **Frontend Runtime**: Bun
 - **Package Manager**: uv (Python) / bun (JS)
-- **Testing**: pytest
-- **Linting**: ruff
-- **Formatting**: black
+- **Testing**: pytest + playwright
+- **Linting**: ruff + black
 - **CI/CD**: GitHub Actions
 
 ## Getting Started
@@ -82,103 +60,77 @@ Each User Story is documented in `/docs/user_stories/<user_story_id>.md` with:
 ### Prerequisites
 
 - Python 3.12
-- [uv](https://docs.astral.sh/uv/) - Fast Python package installer
-- [Bun](https://bun.sh/) - JavaScript runtime and package manager
-- Terraform >= 1.31.1
+- [uv](https://docs.astral.sh/uv/)
+- [Bun](https://bun.sh/)
+- Terraform >= 1.13.1
 - AWS CLI configured
-- Docker and docker-compose (for LocalStack testing)
+- Docker + docker-compose (for LocalStack)
 
 ### Installation
 
 ```bash
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install project dependencies
-uv sync
-
-# Install dev dependencies only
-uv sync --only-dev
-
-# Install all dependencies including extras
-uv sync --all-extras
+just sync-all       # Install all Python dependencies
+just app::install   # Install frontend dependencies
 ```
 
-
-### Developer Default Workflow
-
-The recommended workflow for local development using `just` and LocalStack:
+### Local Development with LocalStack
 
 ```bash
 # 1. Start LocalStack
 just infra::localstack-start
 
-# 1.1. Bootstrap localstack
+# 2. Bootstrap + provision infrastructure
 just infra::bootstrap::init local && just infra::bootstrap::apply local
-
-# 2. Provision global infrastructure (S3, etc.)
 just infra::global::init local && just infra::global::apply local
 
-# 3. Build and deploy service
+# 3. Build and deploy Lambda services
 just services::build-all
-
-# 4. Provision lambda services
 just infra::services::init local && just infra::services::apply local
 
-# 5. Run functional tests
-just tests::run
+# 4. Run functional tests
+just e2e::run
 
-# 6. Launch Frontend Locally
-just app::install
+# 5. Start frontend
 just app::dev
-
-# 7. Manual Verification
-# Replace <API_GW_ID> with the output from 'terraform output -raw api_gateway_id' in infra/services
-curl -s http://<API_GW_ID>.execute-api.localhost.localstack.cloud:4566/v1/content
 ```
 
-### Running Tests Locally
+### Running Tests
 
 ```bash
 # Unit tests
-just services::<service_name>::test
+just services::test-all
+just services::authorizer::test
+just services::content::test
 
-# Run with coverage
-just services::<service_name>::test-coverage
+# E2E tests (requires LocalStack running)
+just e2e::run
+just e2e::run-story us_004
 ```
 
 ### Code Quality
 
 ```bash
-# Lint with ruff and black
-just services::<service_name>::lint
-
-# Terraform formatting
-just infra::lint
-
-# Frontend linting
+just services::lint-all     # ruff + black --check
+just services::format-all   # black + ruff --fix
 just app::lint
+just infra::global::lint
+just infra::services::lint
 ```
 
-## CI/CD Overview
+## CI/CD
 
-Our GitHub Actions pipelines run on every PR:
+GitHub Actions run on push to `main` or PR:
 
-1. **Test Pipeline**: Runs functional + unit tests
-2. **Lint Pipeline**: Runs ruff, black --check, terraform fmt -check
-3. **LocalStack Test Pipeline**: Deploys infrastructure to LocalStack and runs functional tests
-4. **Terraform Plan**: Shows infrastructure changes on PR
-5. **Deploy Pipeline**: Runs terraform apply on merge to main (with approval for prod)
+- **Deploy Infra - Global**: triggers on `infra/global/**` changes
+- **Deploy Lambda - Authorizer**: triggers on `services/authorizer/**` changes, runs unit tests first
+- **Deploy Lambda - Content**: triggers on `services/content_service/**` changes, runs unit tests first
+- **E2E Tests**: spins up LocalStack, provisions full stack, runs functional tests
 
 ## Contributing
 
-1. Create a User Story in `/docs/user_stories/`
+1. Create User Story in `/docs/user_stories/`
 2. Write functional test in `/tests/functional/`
-3. Write unit tests in service `/tests/`
-4. Implement code to pass tests
-5. Ensure all linters pass
+3. Write unit tests in `/services/<service>/tests/`
+4. Implement to pass tests
+5. Ensure linters pass
 6. Submit PR
-
-## License
-
-[License information to be added]

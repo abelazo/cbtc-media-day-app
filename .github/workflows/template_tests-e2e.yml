@@ -131,7 +131,7 @@ jobs:
         run: |
           # Run tests and capture output, allow failure to process it
           set +e
-          just tests::run > test_output.txt 2>&1
+          just e2e::run > test_output.txt 2>&1
           EXIT_CODE=$?
           set -e
 
