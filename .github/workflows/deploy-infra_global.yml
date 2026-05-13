@@ -10,14 +10,13 @@ run-name: >-
 on:
   push:
     branches:
-      - main
+      - develop
     paths:
       - 'infra/global/**'
       - '.github/workflows/deploy-infra_global.yml'
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -27,7 +26,9 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Terraform QA
         uses: ./.github/actions/terraform-qa
@@ -37,28 +38,36 @@ jobs:
   # TODO: Add localstack testing
 
   deploy:
-    name: Deploy
+    name: Deploy (${{ matrix.environment }})
     needs: qa
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ matrix.environment }}
+    strategy:
+      matrix:
+        environment: [prod]
+    permissions:
+      id-token: write
+      contents: read
     defaults:
       run:
         working-directory: infra/global
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: 1.13.1
 
       - name: Install Just
-        uses: extractions/setup-just@v3
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: eu-west-1
@@ -66,11 +75,11 @@ jobs:
       - name: Terraform Init
         run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
 
-      - name: Terraform Init
-        run: just workspace dev
+      - name: Terraform Workspace
+        run: just workspace ${{ matrix.environment }}
 
       - name: Terraform Plan
-        run: just plan dev
+        run: just plan ${{ matrix.environment }}
 
       - name: Terraform Apply
-        run: just apply dev --auto-approve
+        run: just apply ${{ matrix.environment }} --auto-approve

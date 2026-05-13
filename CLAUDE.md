@@ -130,6 +130,22 @@ Tests detect LocalStack via `AWS_ENDPOINT_URL` env var. Resource names follow th
 - Tests: `*_test.py` or `test_*.py` (pytest discovers both); `pythonpath = [".", "libs", "services"]` in root `pyproject.toml`
 - Each service is an independent uv workspace package
 
+## GitHub Actions
+
+All third-party actions must use pinned SHA hashes with a version comment:
+
+```yaml
+uses: owner/action@<full-commit-sha> # vX.Y.Z
+```
+
+To get the SHA for a tag:
+```bash
+# Fetch tag SHA (dereference annotated tags if type == "tag")
+curl -s "https://api.github.com/repos/<owner>/<action>/git/ref/tags/<tag>" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['object']['sha'], d['object']['type'])"
+# If type == "tag", dereference:
+curl -s "https://api.github.com/repos/<owner>/<action>/git/tags/<sha>" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['object']['sha'])"
+```
+
 ## Development Methodology
 
 TDD organized around user stories:
