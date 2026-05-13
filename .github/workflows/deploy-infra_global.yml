@@ -35,8 +35,6 @@ jobs:
         with:
           working-directory: infra/global
 
-  # TODO: Add localstack testing
-
   deploy:
     name: Deploy (${{ matrix.environment }})
     needs: qa
@@ -44,7 +42,7 @@ jobs:
     environment: ${{ matrix.environment }}
     strategy:
       matrix:
-        environment: [prod]
+        environment: [dev,prod]
     permissions:
       id-token: write
       contents: read
@@ -81,5 +79,6 @@ jobs:
       - name: Terraform Plan
         run: just plan ${{ matrix.environment }}
 
+      # TODO: activate when confident
       # - name: Terraform Apply
       #   run: just apply ${{ matrix.environment }} --auto-approve

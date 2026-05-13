@@ -1,6 +1,9 @@
+# Get account id
+data "aws_caller_identity" "current" {}
+
 # Bucket for terraform state
 locals {
-  bucket_name = "cbtc-tfstate-${var.environment}"
+  bucket_name = "cbtc-terraform-state-${var.environment}-${data.aws_caller_identity.current.account_id}"
 }
 
 resource "aws_s3_bucket" "terraform_state" {
@@ -24,7 +27,6 @@ resource "aws_s3_bucket_versioning" "terraform_state_bucket_versioning" {
   bucket = aws_s3_bucket.terraform_state.bucket
 
   versioning_configuration {
-    mfa_delete = "Enabled"
-    status     = "Enabled"
+    status = "Enabled"
   }
 }

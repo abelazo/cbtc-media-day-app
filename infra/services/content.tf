@@ -126,8 +126,7 @@ resource "aws_cloudwatch_log_group" "content_lambda" {
 resource "aws_s3_bucket" "content" {
   bucket = "${var.project_name}-${var.environment}-content-${data.aws_caller_identity.current.account_id}"
 
-  # Force destroy for easier cleanup in dev/local
-  force_destroy = var.environment == "local" ? true : false
+  force_destroy = false
 
   tags = {
     Name = "${var.project_name}-${var.environment}-content-${data.aws_caller_identity.current.account_id}"
