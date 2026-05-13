@@ -10,7 +10,7 @@ run-name: >-
 on:
   push:
     branches:
-      - develop
+      - main
     paths:
       - 'infra/global/**'
       - '.github/workflows/deploy-infra_global.yml'
