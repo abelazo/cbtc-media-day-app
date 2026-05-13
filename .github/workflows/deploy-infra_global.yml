@@ -81,5 +81,5 @@ jobs:
       - name: Terraform Plan
         run: just plan ${{ matrix.environment }}
 
-      - name: Terraform Apply
-        run: just apply ${{ matrix.environment }} --auto-approve
+      # - name: Terraform Apply
+      #   run: just apply ${{ matrix.environment }} --auto-approve
