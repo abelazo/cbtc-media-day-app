@@ -14,7 +14,6 @@ on:
     paths:
       - 'infra/global/**'
       - '.github/workflows/deploy-infra_global.yml'
-      - '.releaserc.infra-global.yaml'
   workflow_dispatch:
 
 permissions:
@@ -48,6 +47,9 @@ jobs:
     outputs:
       new_release_published: ${{ steps.release.outputs.new_release_published }}
       new_release_version: ${{ steps.release.outputs.new_release_version }}
+    defaults:
+      run:
+        working-directory: infra/global
 
     steps:
       - name: Checkout code
@@ -66,7 +68,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx -y semantic-release@25 --extends ./.releaserc.infra-global.yaml
+          npx -y semantic-release@25
           NEW_TAG=$(git tag --points-at HEAD --list 'infra-global-v*' | head -n1)
           if [ -n "$NEW_TAG" ]; then
             echo "new_release_published=true" >> "$GITHUB_OUTPUT"
