@@ -1,0 +1,27 @@
+---
+branches:
+  - main
+tagFormat: "content-v${version}"
+plugins:
+  - - "@semantic-release/commit-analyzer"
+    - releaseRules:
+        # Suppress all commits by default (must come first)
+        - {breaking: true, release: false}
+        - {type: feat, release: false}
+        - {type: fix, release: false}
+        - {type: perf, release: false}
+        - {type: refactor, release: false}
+        - {type: chore, release: false}
+        - {type: docs, release: false}
+        - {type: style, release: false}
+        - {type: test, release: false}
+        - {type: build, release: false}
+        - {type: ci, release: false}
+        # Allow only content scoped commits (overrides suppression above)
+        - {scope: content, type: refactor, release: patch}
+        - {scope: content, type: perf, release: patch}
+        - {scope: content, type: fix, release: patch}
+        - {scope: content, type: feat, release: minor}
+        - {scope: content, breaking: true, release: major}
+  - "@semantic-release/release-notes-generator"
+  - "@semantic-release/github"

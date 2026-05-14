@@ -4,17 +4,17 @@
 [group('stacks')]
 mod bootstrap
 
-# Global stack
+# Global stack (lambda-sources bucket, content bucket, users table, signing)
 [group('stacks')]
 mod global
 
-# Services stack
+# API Gateway stack (REST API + integrations to lambdas)
 [group('stacks')]
-mod services
+mod api-gateway
 
 # Default recipe - show available commands
 help:
-  just --list
+  @just --list
 
 # Clean all modules
 [group('clean')]

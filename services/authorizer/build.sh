@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-echo "🔨 Building authorizer Lambda deployment package..."
+echo "🔨 Building authorizer λ deployment package..."
 
 # Configuration
 SERVICE_NAME="authorizer"
@@ -11,13 +11,9 @@ ZIP_FILE="${SERVICE_NAME}.zip"
 S3_KEY="${SERVICE_NAME}/${ZIP_FILE}"
 SIGNED_S3_PREFIX="${SERVICE_NAME}/signed/"
 
-# Get S3 bucket name from Terraform output
+# Get S3 bucket name and signing profile from global Terraform output
 pushd ../../infra/global >& /dev/null
 BUCKET_NAME=$(terraform output -raw lambda_sources_bucket_name 2>/dev/null || echo "")
-popd >& /dev/null
-
-# Get signing profile name from Terraform output
-pushd ../../infra/services >& /dev/null
 SIGNING_PROFILE=$(terraform output -raw signing_profile_name 2>/dev/null || echo "")
 popd >& /dev/null
 
@@ -31,7 +27,7 @@ fi
 SKIP_SIGNING=false
 if [ -z "$SIGNING_PROFILE" ]; then
     echo "⚠️  Warning: Could not get signing profile from Terraform. Skipping signing."
-    echo "   Make sure services infrastructure is deployed first."
+    echo "   Make sure global infrastructure is deployed first."
     SKIP_SIGNING=true
 fi
 
@@ -67,22 +63,13 @@ echo "✅ Build complete: $DIST_DIR/$ZIP_FILE"
 if [ "$SKIP_UPLOAD" != "true" ]; then
     echo "☁️  Uploading to S3..."
 
-    # Check if AWS profile is set
-    if [ -z "$AWS_PROFILE" ]; then
-        echo "⚠️  AWS profile not set. Setting LocalStack defaults..."
-        export AWS_ACCESS_KEY_ID=test
-        export AWS_SECRET_ACCESS_KEY=test
-        export AWS_DEFAULT_REGION=eu-west-1
-        export AWS_ENDPOINT_URL=http://localhost:4566
-    fi
-
     # Upload to S3
-    aws s3 cp "$DIST_DIR/$ZIP_FILE" "s3://${BUCKET_NAME}/${S3_KEY}" ${AWS_ENDPOINT_URL:+--endpoint-url=$AWS_ENDPOINT_URL}
+    aws s3 cp "$DIST_DIR/$ZIP_FILE" "s3://${BUCKET_NAME}/${S3_KEY}"
 
     echo "✅ Uploaded to s3://${BUCKET_NAME}/${S3_KEY}"
 
-    # Sign the artifact if signing profile is available and not using LocalStack
-    if [ "$SKIP_SIGNING" != "true" ] && [ -n "$AWS_PROFILE" ]; then
+    # Sign the artifact if signing profile is available
+    if [ "$SKIP_SIGNING" != "true" ]; then
         echo "🔏 Signing the artifact..."
 
         # Get the S3 object version ID (required by Signer)
@@ -111,10 +98,13 @@ if [ "$SKIP_UPLOAD" != "true" ]; then
         SIGNED_S3_KEY="${SIGNED_S3_PREFIX}${JOB_ID}.zip"
         echo "✅ Signed artifact: s3://${BUCKET_NAME}/${SIGNED_S3_KEY}"
 
-        # Update the Lambda function code with the signed artifact
-        FUNCTION_NAME=$(aws lambda list-functions \
-            --query "Functions[?ends_with(FunctionName, '-authorizer')].FunctionName | [0]" \
-            --output text)
+        # Resolve function name from service-local Terraform output
+        FUNCTION_NAME=""
+        if [ -d "infra" ]; then
+            pushd infra >& /dev/null
+            FUNCTION_NAME=$(terraform output -raw authorizer_function_name 2>/dev/null || echo "")
+            popd >& /dev/null
+        fi
 
         if [ -n "$FUNCTION_NAME" ] && [ "$FUNCTION_NAME" != "None" ]; then
             echo "🚀 Updating Lambda function: $FUNCTION_NAME..."
@@ -128,7 +118,7 @@ if [ "$SKIP_UPLOAD" != "true" ]; then
             echo "   aws lambda update-function-code --function-name <FUNCTION_NAME> --s3-bucket $BUCKET_NAME --s3-key $SIGNED_S3_KEY"
         fi
     else
-        echo "⏭️  Skipping code signing (LocalStack or signing profile unavailable)"
+        echo "⏭️  Skipping code signing (signing profile unavailable)"
     fi
 else
     echo "⏭️  Skipping upload"

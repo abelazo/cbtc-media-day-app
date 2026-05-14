@@ -29,3 +29,8 @@ python_files = ["*_test.py", "test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.35",
+]

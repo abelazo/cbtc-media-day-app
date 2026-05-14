@@ -9,3 +9,15 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "project_name" {
+  description = "Project name used for resource naming"
+  type        = string
+  default     = "cbtc-media-day"
+}
+
+variable "release_version" {
+  description = "Release version stamped on every resource via the DeployedVersion tag. Set by CI to e.g. infra-global-v1.4.0."
+  type        = string
+  default     = "infra-global-vunreleased"
+}

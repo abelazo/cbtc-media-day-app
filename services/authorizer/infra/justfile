@@ -1,0 +1,17 @@
+import '../../../infra/infra.recipes.just'
+
+# Default recipe - show available commands
+help:
+  @just --list
+
+# Initialize Terraform (authorizer stack)
+[group('init')]
+init env +args="":
+  terraform init --reconfigure --backend-config=.config.{{env}}.tfbackend {{args}}
+
+# Clean up
+[group('init')]
+clean:
+  @echo "Cleaning up..."
+  rm -rf .terraform
+  rm -rf .terraform.lock.hcl

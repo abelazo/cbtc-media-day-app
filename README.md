@@ -1,10 +1,11 @@
 # CBTC Media Day
 
-| Pipeline                        | Status                                                                                                                                                                                                                        |
-|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Deploy Infra - Global           | [![Deploy - Global Infrastructure](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml)       |
-| Deploy Lambda - Content Service | [![Deploy Lambda - Content](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml)          |
-| Deploy Lambda - Authorizer      | [![Deploy Lambda - Authorizer](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml) |
+| Pipeline                        | Status                                                                                                                                                                                                                                              |
+|---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Deploy - Global                 | [![Deploy - Global](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml)                                            |
+| λ - Authorizer                  | [![λ - Authorizer](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml)                                   |
+| λ - Content                     | [![λ - Content](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml)                                            |
+| Deploy - API Gateway            | [![Deploy - API Gateway](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml)                             |
 
 A serverless AWS application built with Python 3.12 and Terraform, following Test-Driven Development (TDD) principles.
 
@@ -15,23 +16,28 @@ This is a **monorepo** containing all services, infrastructure, and documentatio
 ### Directory Structure
 
 ```
-/.github/workflows/   # CI/CD pipelines
+/.github/workflows/   # CI/CD pipelines (one per stack)
 /app/                 # Frontend application (React + Vite)
     src/              # Frontend source code
     public/           # Public assets
 /docs/                # Documentation
     user_stories/     # User Story definitions
     architecture/     # Architecture documentation
-/infra/               # Terraform infrastructure as code
-    bootstrap/        # State bucket (run once)
-    global/           # Global resources (S3, DynamoDB, IAM)
-    services/         # API Gateway, Lambda, CloudWatch
-/services/            # AWS Lambda functions
+/infra/               # Shared Terraform stacks
+    bootstrap/        # State bucket (run once per account)
+    global/           # Shared resources: lambda sources bucket, content bucket,
+                      # users table, code signing profile + config
+    api-gateway/      # REST API + lambda authorizer attachment + integrations
+/services/            # AWS Lambda functions, each with its own infra stack
     authorizer/       # Token authorizer Lambda
-    content_service/  # Content delivery Lambda
+        infra/        # Authorizer Terraform stack
+    content/          # Content delivery Lambda
+        infra/        # Content Terraform stack
 /tests/
     functional/       # End-to-end functional tests per User Story
 ```
+
+Deploy order: `global` → (`authorizer` ∥ `content`) → `api-gateway`. See `just deploy-all <env>`.
 
 ## Development Methodology
 
@@ -52,7 +58,7 @@ TDD organized around User Stories.
 - **Frontend Runtime**: Bun
 - **Package Manager**: uv (Python) / bun (JS)
 - **Testing**: pytest + playwright
-- **Linting**: ruff + black
+- **Linting + Formatting**: ruff (linter + formatter — no Black)
 - **CI/CD**: GitHub Actions
 
 ## Getting Started
@@ -63,8 +69,7 @@ TDD organized around User Stories.
 - [uv](https://docs.astral.sh/uv/)
 - [Bun](https://bun.sh/)
 - Terraform >= 1.13.1
-- AWS CLI configured
-- Docker + docker-compose (for LocalStack)
+- AWS CLI configured against the `dev` or `prod` AWS account
 
 ### Installation
 
@@ -73,25 +78,20 @@ just sync-all       # Install all Python dependencies
 just app::install   # Install frontend dependencies
 ```
 
-### Local Development with LocalStack
+### First-time deploy to `dev`
 
 ```bash
-# 1. Start LocalStack
-just infra::localstack-start
+# 1. Bootstrap the TF state bucket in the dev account
+just infra::bootstrap::init dev && just infra::bootstrap::apply dev
 
-# 2. Bootstrap + provision infrastructure
-just infra::bootstrap::init local && just infra::bootstrap::apply local
-just infra::global::init local && just infra::global::apply local
-
-# 3. Build and deploy Lambda services
+# 2. Build the lambda artifacts
 just services::build-all
-just infra::services::init local && just infra::services::apply local
 
-# 4. Run functional tests
+# 3. Apply every stack in the required order
+just deploy-all dev
+
+# 4. Run functional tests against the deployed dev environment
 just e2e::run
-
-# 5. Start frontend
-just app::dev
 ```
 
 ### Running Tests
@@ -102,7 +102,7 @@ just services::test-all
 just services::authorizer::test
 just services::content::test
 
-# E2E tests (requires LocalStack running)
+# E2E tests (runs against the deployed dev API Gateway)
 just e2e::run
 just e2e::run-story us_004
 ```
@@ -110,21 +110,29 @@ just e2e::run-story us_004
 ### Code Quality
 
 ```bash
-just services::lint-all     # ruff + black --check
-just services::format-all   # black + ruff --fix
+just services::lint-all                          # ruff check + ruff format --check
+just services::format-all                        # ruff format + ruff check --fix
 just app::lint
 just infra::global::lint
-just infra::services::lint
+just services::authorizer::infra::lint
+just services::content::infra::lint
+just 'infra::api-gateway::lint'
 ```
 
 ## CI/CD
 
-GitHub Actions run on push to `main` or PR:
+Four independent pipelines, one per stack, each with its own semantic-release versioned artifact and `dev` → `prod` flow with a manual approval between environments:
 
-- **Deploy Infra - Global**: triggers on `infra/global/**` changes
-- **Deploy Lambda - Authorizer**: triggers on `services/authorizer/**` changes, runs unit tests first
-- **Deploy Lambda - Content**: triggers on `services/content_service/**` changes, runs unit tests first
-- **E2E Tests**: spins up LocalStack, provisions full stack, runs functional tests
+- **Deploy - Global** (`infra/global/**`) — tag `infra-global-vX.Y.Z`.
+- **λ - Authorizer** (`services/authorizer/**`) — tag `authorizer-vX.Y.Z`, builds + signs + uploads lambda artifact.
+- **λ - Content** (`services/content/**`) — tag `content-vX.Y.Z`, builds + signs + uploads lambda artifact.
+- **Deploy - API Gateway** (`infra/api-gateway/**`) — tag `api-gateway-vX.Y.Z`.
+
+Per-environment deploy tracking:
+- Moving Git tag `<stack>-deployed-<env>` force-updated to the deployed commit.
+- `DeployedVersion = <stack>-vX.Y.Z` tag on every taggable AWS resource.
+- Lambda `Description` set to the release version.
+- One JSONL line per deploy appended to `deployments.jsonl` in the audit bucket (`{ts, stack, version, env, commit, actor}`).
 
 ## Contributing
 

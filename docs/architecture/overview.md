@@ -56,7 +56,9 @@ Services are organized as independent Lambda functions, each with:
 - Isolated source code in `/services/<service_name>/src/`
 - Unit tests in `/services/<service_name>/tests/`
 - Dedicated `requirements.txt` for dependencies
-- Terraform infrastructure in `/infra/services/`
+- Service-local Terraform stack in `/services/<service_name>/infra/`
+
+Shared infrastructure (lambda sources bucket, content bucket, users table, code signing) lives in `/infra/global/`. The API Gateway REST API + integrations live in `/infra/api-gateway/`.
 
 ## Data Flow
 

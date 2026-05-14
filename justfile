@@ -32,6 +32,25 @@ sync package:
     @echo "Syncing development environment for package..."
     uv sync --package cbtc-media-day --package {{package}} --all-extras
 
+# Apply every Terraform stack to the given env, in the required order:
+# global -> (authorizer || content) -> api-gateway.
+# Default is sequential. To parallelise the lambda step, run the two
+# `services::*::infra::apply` lines with `&` + `wait`.
+[group('orchestration')]
+deploy-all env +args="":
+    just infra::global::apply {{env}} {{args}}
+    just services::authorizer::infra::apply {{env}} {{args}}
+    just services::content::infra::apply {{env}} {{args}}
+    just 'infra::api-gateway::apply' {{env}} {{args}}
+
+# Destroy every Terraform stack to the given env, in reverse order
+[group('orchestration')]
+destroy-all env:
+    just 'infra::api-gateway::destroy' {{env}}
+    just services::content::infra::destroy {{env}}
+    just services::authorizer::infra::destroy {{env}}
+    just infra::global::destroy {{env}}
+
 # Clean build artifacts and caches
 [group('setup')]
 clean:

@@ -14,7 +14,7 @@ All commands use `just` (a command runner). Run `just --list` to see all availab
 ```bash
 just sync-all                     # Install all Python dependencies (uv workspaces)
 just sync authorizer              # Install authorizer dependencies
-just sync content_service         # Install content_service dependencies
+just sync content                 # Install content service dependencies
 just app::install                 # Install frontend dependencies (bun)
 ```
 
@@ -28,7 +28,7 @@ just services::authorizer::test
 # Single test file or function (navigate to package first)
 cd services/authorizer && uv run pytest tests/test_authorizer.py::TestClass::test_fn -v
 
-# E2E tests (requires LocalStack running)
+# E2E tests (runs against the deployed `dev` API Gateway)
 just e2e::run
 just e2e::run-story us_004        # Single user story
 ```
@@ -41,36 +41,33 @@ just app::dev                               # Start frontend dev server
 
 ### Code Quality
 ```bash
-just services::lint-all           # ruff + black --check
-just services::format-all         # black + ruff --fix
+just services::lint-all           # ruff check + ruff format --check
+just services::format-all         # ruff format + ruff check --fix
 just app::lint
 ```
 
 ### Building & Deployment
 ```bash
-just services::build-all          # Build all Lambda packages
-just infra::global::apply local   # Deploy global infra to LocalStack
-just infra::services::apply local # Deploy services to LocalStack
+just services::build-all                          # Build all Lambda packages
+just deploy-all dev                               # Apply every stack to dev, in the required order
+just infra::global::apply dev                     # Apply the global stack only
+just services::authorizer::infra::apply dev       # Apply the authorizer stack only
+just services::content::infra::apply dev          # Apply the content stack only
+just 'infra::api-gateway::apply' dev              # Apply the API Gateway stack only
 ```
 
-### Local Development with LocalStack
-```bash
-just infra::localstack-start
-just infra::bootstrap::init local && just infra::bootstrap::apply local
-just infra::global::init local && just infra::global::apply local
-just services::build-all
-just infra::services::init local && just infra::services::apply local
-just app::dev
-```
+Deploy order: `global` → (`authorizer` ∥ `content`) → `api-gateway`. The `deploy-all` recipe runs them sequentially; the lambda step can be parallelised by editing the recipe to run the two `services::*::infra::apply` lines with `&` + `wait`.
 
 ## Architecture
 
 ### Directory Structure
-- `services/` — Lambda functions (authorizer, content_service), each a separate uv workspace with own `pyproject.toml` + `justfile`
-- `infra/` — Terraform IaC split into three stacks: bootstrap, global, services
-- `app/` — React 19 + Vite + Bun frontend (single-page, one form component)
-- `tests/functional/` — E2E tests organized by user story (`us_002_test.py`, etc.)
-- `docs/user_stories/` — Feature specs (US-001 through US-005)
+- `services/` — Lambda functions, each a separate uv workspace with its own `pyproject.toml`, `justfile`, and Terraform stack under `infra/`:
+  - `services/authorizer/` — API Gateway custom authorizer Lambda (`infra/` = authorizer stack).
+  - `services/content/` — Content Service Lambda (`infra/` = content stack).
+- `infra/` — Shared Terraform stacks: `bootstrap`, `global`, `api-gateway`.
+- `app/` — React 19 + Vite + Bun frontend (single-page, one form component).
+- `tests/functional/` — E2E tests organized by user story (`us_002_test.py`, etc.).
+- `docs/user_stories/` — Feature specs (US-001 through US-005).
 
 ### Request Flow
 
@@ -101,15 +98,24 @@ Photos are stored as S3 keys, not filenames. Missing keys are skipped with a war
 
 ### Terraform Stack Organization
 
-Three-tier Terraform structure, each with its own `justfile` supporting `init`, `plan`, `apply`, `fmt`, `validate`, `lint` recipes:
+Five-stack Terraform layout. Each stack has its own `justfile` supporting `init`, `plan`, `apply`, `fmt`, `validate`, `lint` recipes:
 
-1. **bootstrap** — Creates S3 bucket for Terraform state (`cbtc-tfstate-{env}`). Run once.
-2. **global** — Lambda sources S3 bucket, DynamoDB users table, content S3 bucket, IAM roles.
-3. **services** — API Gateway REST API, Lambda authorizer + content service, CloudWatch log groups.
+1. **bootstrap** (`infra/bootstrap/`) — Creates the S3 bucket for Terraform state per account (`cbtc-terraform-state-<env>-<account_id>`). Run once per account.
+2. **global** (`infra/global/`) — Shared, long-lived resources: lambda sources S3 bucket, content S3 bucket, DynamoDB `users` table, code signing profile + config.
+3. **authorizer** (`services/authorizer/infra/`) — Authorizer Lambda function, its IAM role/policies, and CloudWatch log group. Reads `global` via `terraform_remote_state`.
+4. **content** (`services/content/infra/`) — Content Lambda function, its IAM role/policies, and CloudWatch log group. Reads `global` via `terraform_remote_state`.
+5. **api-gateway** (`infra/api-gateway/`) — REST API, `/content` resource, lambda authorizer attachment, AWS_PROXY integration, CORS, deployment, and `v1` stage. Reads `authorizer` and `content` via remote state.
 
-Infra recipes follow the pattern `just infra::<stack>::<action> <env>` (e.g., `just infra::services::apply local`).
+Recipe namespaces:
+- `just infra::<stack>::<action> <env>` for `bootstrap`, `global`, `api-gateway`.
+- `just services::<svc>::infra::<action> <env>` for `authorizer` and `content`.
+- `just deploy-all <env>` applies every stack in the required order: `global` → (`authorizer` ∥ `content`) → `api-gateway`.
 
-Lambda packages are built by `services/*/build.sh`: copies `src/`, installs dependencies into `dist/`, zips, uploads to S3 lambda-sources bucket. In non-LocalStack environments, the script also signs the artifact before updating Lambda code.
+Deploy order matters: downstream stacks read upstream outputs via `terraform_remote_state`, so a fresh apply must run upstream first. Each stack also publishes a `<stack>-deployed-<env>` Git tag and appends to the audit log on successful apply.
+
+Each Terraform root has an `account_guard.tf` precondition asserting the AWS account currently authenticated matches the expected per-env account (dev `454591548336`, prod `788070448579`).
+
+Lambda packages are built by `services/*/build.sh`: copies `src/`, installs dependencies into `dist/`, zips, uploads to the S3 lambda-sources bucket, signs the artifact via AWS Signer, then updates the Lambda code.
 
 ### Frontend
 
@@ -118,17 +124,39 @@ Single form component (`app/src/components/DocumentIdForm.jsx`) takes DNI + Name
 ### E2E Test Fixtures
 
 `tests/functional/conftest.py` provides:
-- `api_gateway_url` — reads from env or Terraform output
-- `users_table` — boto3 DynamoDB resource
-- `seeded_users` — pre-seeds DynamoDB with test data; auto-teardown after test
+- `api_gateway_url` — reads from env `API_GATEWAY_URL` or `terraform output` in `infra/api-gateway/`.
+- `users_table` — boto3 DynamoDB resource.
+- `seeded_users` — pre-seeds DynamoDB with test data.
 
-Tests detect LocalStack via `AWS_ENDPOINT_URL` env var. Resource names follow the pattern `cbtc-media-day-local-*`.
+E2E tests target the deployed `dev` environment (real AWS).
 
 ## Code Style
 
-- Python: 120 char line length, ruff + black
+- Python: 120 char line length, formatted and linted with `ruff` (no Black)
 - Tests: `*_test.py` or `test_*.py` (pytest discovers both); `pythonpath = [".", "libs", "services"]` in root `pyproject.toml`
 - Each service is an independent uv workspace package
+
+## CI/CD Pipelines
+
+Four independent pipelines, one per stack, each with its own semantic-release versioned artifact and `dev` → `prod` flow:
+
+| Pipeline | Workflow | Path filter | Tag format |
+| --- | --- | --- | --- |
+| `Deploy - Global` | `.github/workflows/deploy-infra_global.yml` | `infra/global/**` | `infra-global-vX.Y.Z` |
+| `λ - Authorizer` | `.github/workflows/deploy-lambda_authorizer.yml` | `services/authorizer/**` | `authorizer-vX.Y.Z` |
+| `λ - Content` | `.github/workflows/deploy-lambda_content.yml` | `services/content/**` | `content-vX.Y.Z` |
+| `Deploy - API Gateway` | `.github/workflows/deploy-infra_api-gateway.yml` | `infra/api-gateway/**` | `api-gateway-vX.Y.Z` |
+
+Per-pipeline flow: lint → plan-on-PR → semantic-release on merge to `main` → apply against `dev` → manual-approval gate → apply against `prod`.
+
+Each deploy job:
+- Passes `-var="release_version=<stack>-vX.Y.Z"` so every taggable AWS resource carries a `DeployedVersion` tag matching the release, and lambdas have their `Description` set to the version.
+- Force-updates a moving Git tag `<stack>-deployed-<env>` to the deployed commit.
+- Appends a JSONL record to `deployments.jsonl` in the audit bucket: `{ts, stack, version, env, commit, actor}`.
+
+Commit-scope filtering: each stack's `.releaserc.yaml` only releases on Conventional Commits with a matching scope (`infra-global`, `auth`, `content`, `api-gw`). A commit touching multiple stacks must use multiple scoped commits or one combined commit that matches each scope rule.
+
+Commit-order coupling: pipelines do NOT orchestrate each other. If a downstream stack needs a new upstream output, merge and deploy the upstream change first.
 
 ## GitHub Actions
 
