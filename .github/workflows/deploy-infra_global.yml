@@ -14,6 +14,7 @@ on:
     paths:
       - 'infra/global/**'
       - '.github/workflows/deploy-infra_global.yml'
+      - '.releaserc.infra-global.yaml'
   workflow_dispatch:
 
 permissions:
@@ -35,9 +36,49 @@ jobs:
         with:
           working-directory: infra/global
 
+  release:
+    name: Semantic Release
+    needs: qa
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new_release_published: ${{ steps.release.outputs.new_release_published }}
+      new_release_version: ${{ steps.release.outputs.new_release_version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: '20'
+
+      - name: Run semantic-release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx -y semantic-release@25 --extends ./.releaserc.infra-global.yaml
+          NEW_TAG=$(git tag --points-at HEAD --list 'infra-global-v*' | head -n1)
+          if [ -n "$NEW_TAG" ]; then
+            echo "new_release_published=true" >> "$GITHUB_OUTPUT"
+            echo "new_release_version=${NEW_TAG#infra-global-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "new_release_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
     name: Deploy (${{ matrix.environment }})
-    needs: qa
+    needs: release
+    if: needs.release.outputs.new_release_published == 'true'
     runs-on: ubuntu-latest
     environment: ${{ matrix.environment }}
     strategy:
