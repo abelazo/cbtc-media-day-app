@@ -11,6 +11,7 @@ CBTC Media Day is a serverless AWS application for managing and distributing med
 All commands use `just` (a command runner). Run `just --list` to see all available recipes.
 
 ### Setup & Dependencies
+
 ```bash
 just sync-all                     # Install all Python dependencies (uv workspaces)
 just sync authorizer              # Install authorizer dependencies
@@ -19,6 +20,7 @@ just app::install                 # Install frontend dependencies (bun)
 ```
 
 ### Testing
+
 ```bash
 # Backend unit tests
 just services::test-all
@@ -34,12 +36,14 @@ just e2e::run-story us_004        # Single user story
 ```
 
 ### Run
+
 ```bash
 just services::authorizer::run              # Run authorizer locally
 just app::dev                               # Start frontend dev server
 ```
 
 ### Code Quality
+
 ```bash
 just services::lint-all           # ruff check + ruff format --check
 just services::format-all         # ruff format + ruff check --fix
@@ -47,6 +51,7 @@ just app::lint
 ```
 
 ### Building & Deployment
+
 ```bash
 just services::build-all                          # Build all Lambda packages
 just deploy-all dev                               # Apply every stack to dev, in the required order
@@ -61,6 +66,7 @@ Deploy order: `global` → (`authorizer` ∥ `content`) → `api-gateway`. The `
 ## Architecture
 
 ### Directory Structure
+
 - `services/` — Lambda functions, each a separate uv workspace with its own `pyproject.toml`, `justfile`, and Terraform stack under `infra/`:
   - `services/authorizer/` — API Gateway custom authorizer Lambda (`infra/` = authorizer stack).
   - `services/content/` — Content Service Lambda (`infra/` = content stack).
@@ -90,6 +96,7 @@ The authorizer returns an IAM Allow/Deny policy plus a context dict `{username, 
 **ZIP caching**: When a user first downloads photos, a ZIP is built from S3 and stored at `downloads/{username}.zip`. Subsequent requests return a presigned URL to the cached ZIP immediately without rebuilding. No cache invalidation is implemented — stale ZIPs persist until manually deleted.
 
 **DynamoDB `users` table schema**:
+
 - Key: `username` (string, the "Name" part from auth header)
 - `dnis`: list of strings (normalized: no leading zeros, uppercase)
 - `photos`: list of S3 keys in the content bucket
@@ -107,6 +114,7 @@ Five-stack Terraform layout. Each stack has its own `justfile` supporting `init`
 5. **api-gateway** (`infra/api-gateway/`) — REST API, `/content` resource, lambda authorizer attachment, AWS_PROXY integration, CORS, deployment, and `v1` stage. Reads `authorizer` and `content` via remote state.
 
 Recipe namespaces:
+
 - `just infra::<stack>::<action> <env>` for `bootstrap`, `global`, `api-gateway`.
 - `just services::<svc>::infra::<action> <env>` for `authorizer` and `content`.
 - `just deploy-all <env>` applies every stack in the required order: `global` → (`authorizer` ∥ `content`) → `api-gateway`.
@@ -124,6 +132,7 @@ Single form component (`app/src/components/DocumentIdForm.jsx`) takes DNI + Name
 ### E2E Test Fixtures
 
 `tests/functional/conftest.py` provides:
+
 - `api_gateway_url` — reads from env `API_GATEWAY_URL` or `terraform output` in `infra/api-gateway/`.
 - `users_table` — boto3 DynamoDB resource.
 - `seeded_users` — pre-seeds DynamoDB with test data.
@@ -140,16 +149,17 @@ E2E tests target the deployed `dev` environment (real AWS).
 
 Four independent pipelines, one per stack, each with its own semantic-release versioned artifact and `dev` → `prod` flow:
 
-| Pipeline | Workflow | Path filter | Tag format |
-| --- | --- | --- | --- |
-| `Deploy - Global` | `.github/workflows/deploy-infra_global.yml` | `infra/global/**` | `infra-global-vX.Y.Z` |
-| `λ - Authorizer` | `.github/workflows/deploy-lambda_authorizer.yml` | `services/authorizer/**` | `authorizer-vX.Y.Z` |
-| `λ - Content` | `.github/workflows/deploy-lambda_content.yml` | `services/content/**` | `content-vX.Y.Z` |
-| `Deploy - API Gateway` | `.github/workflows/deploy-infra_api-gateway.yml` | `infra/api-gateway/**` | `api-gateway-vX.Y.Z` |
+| Pipeline               | Workflow                                         | Path filter              | Tag format            |
+| ---------------------- | ------------------------------------------------ | ------------------------ | --------------------- |
+| `Deploy - Global`      | `.github/workflows/deploy-infra_global.yml`      | `infra/global/**`        | `infra-global-vX.Y.Z` |
+| `λ - Authorizer`       | `.github/workflows/deploy-lambda_authorizer.yml` | `services/authorizer/**` | `authorizer-vX.Y.Z`   |
+| `λ - Content`          | `.github/workflows/deploy-lambda_content.yml`    | `services/content/**`    | `content-vX.Y.Z`      |
+| `Deploy - API Gateway` | `.github/workflows/deploy-infra_api-gateway.yml` | `infra/api-gateway/**`   | `api-gateway-vX.Y.Z`  |
 
 Per-pipeline flow: lint → plan-on-PR → semantic-release on merge to `main` → apply against `dev` → manual-approval gate → apply against `prod`.
 
 Each deploy job:
+
 - Passes `-var="release_version=<stack>-vX.Y.Z"` so every taggable AWS resource carries a `DeployedVersion` tag matching the release, and lambdas have their `Description` set to the version.
 - Force-updates a moving Git tag `<stack>-deployed-<env>` to the deployed commit.
 - Appends a JSONL record to `deployments.jsonl` in the audit bucket: `{ts, stack, version, env, commit, actor}`.
@@ -167,6 +177,7 @@ uses: owner/action@<full-commit-sha> # vX.Y.Z
 ```
 
 To get the SHA for a tag:
+
 ```bash
 # Fetch tag SHA (dereference annotated tags if type == "tag")
 curl -s "https://api.github.com/repos/<owner>/<action>/git/ref/tags/<tag>" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['object']['sha'], d['object']['type'])"
@@ -177,6 +188,7 @@ curl -s "https://api.github.com/repos/<owner>/<action>/git/tags/<sha>" | python3
 ## Development Methodology
 
 TDD organized around user stories:
+
 1. Create spec in `docs/user_stories/US-XXX.md`
 2. Write functional test in `tests/functional/us_xxx_test.py`
 3. Write unit tests in `services/<service>/tests/`
