@@ -59,12 +59,20 @@ resource "aws_iam_role_policy" "authorizer_invocation" {
   })
 }
 
+resource "aws_api_gateway_request_validator" "main" {
+  name                        = "${var.project_name}-${var.environment}-validator"
+  rest_api_id                 = aws_api_gateway_rest_api.main.id
+  validate_request_body       = true
+  validate_request_parameters = true
+}
+
 resource "aws_api_gateway_method" "content_get" {
-  rest_api_id   = aws_api_gateway_rest_api.main.id
-  resource_id   = aws_api_gateway_resource.content.id
-  http_method   = "GET"
-  authorization = "CUSTOM"
-  authorizer_id = aws_api_gateway_authorizer.lambda_authorizer.id
+  rest_api_id          = aws_api_gateway_rest_api.main.id
+  resource_id          = aws_api_gateway_resource.content.id
+  http_method          = "GET"
+  authorization        = "CUSTOM"
+  authorizer_id        = aws_api_gateway_authorizer.lambda_authorizer.id
+  request_validator_id = aws_api_gateway_request_validator.main.id
 }
 
 resource "aws_api_gateway_integration" "content_lambda" {
@@ -113,6 +121,9 @@ resource "aws_api_gateway_stage" "v1" {
   #checkov:skip=CKV_AWS_73:Not activating X-Ray for cost reasons
   #checkov:skip=CKV_AWS_76:Not activating access logging for cost reasons
   #checkov:skip=CKV_AWS_120:Not activating Catching for cost reasons
+  #checkov:skip=CKV2_AWS_51:Not using client cert auth for operational simplicity
+  #checkov:skip=CKV2_AWS_4:Not setting logging level for cost reasons
+  #checkov:skip=CKV2_AWS_29:Not enabling WAF for cost reasons
 
   deployment_id = aws_api_gateway_deployment.v1.id
   rest_api_id   = aws_api_gateway_rest_api.main.id

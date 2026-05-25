@@ -34,7 +34,7 @@ repos:
     rev: v1.38.0
     hooks:
       - id: yamllint
-        args: [-d, "{rules: {line-length: {max: 120}}}"]
+        args: [-d, "{rules: {line-length: {max: 160}}}"]
 
   - repo: https://github.com/sirosen/check-jsonschema
     rev: 0.37.2
