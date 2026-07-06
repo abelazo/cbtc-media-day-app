@@ -1,4 +1,4 @@
-import '../../../infra/infra.recipes.just'
+import '../../../infra/recipes.infra.just'
 
 # Default recipe - show available commands
 help:

@@ -1,13 +1,6 @@
-import '../infra.recipes.just'
-
 # Default recipe - show available commands
 help:
   @just --list
-
-# Initialize Terraform (global stack)
-[group('init')]
-init env +args="":
-  terraform init --backend-config=.config.{{env}}.tfbackend {{args}}
 
 # Clean up
 [group('init')]
@@ -17,3 +10,18 @@ clean:
   rm -rf .terraform.lock.hcl
   rm -rf terraform.tfstate
   rm -rf terraform.tfstate.backup
+
+# Initialize Terraform (global stack)
+[group('init')]
+init +args="":
+  terraform init
+
+# Plan Terraform changes
+[group('apply')]
+plan env="dev" +args="":
+  terraform plan --var="environment={{ env }}" {{ args }}
+
+# Apply Terraform changes
+[group('apply')]
+apply env="dev" +args="":
+  terraform apply --var="environment={{ env }}" {{ args }}

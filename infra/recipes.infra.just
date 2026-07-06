@@ -1,17 +1,19 @@
 # Terraform recipes
 
 # Workspaces
-workspace env:
-  terraform workspace select {{ lowercase(env) }}
+[group('state')]
+workspace env="dev" +args="":
+  @echo 'Selecting workspace for {{BOLD + RED}}{{ env }}{{NORMAL}} environment'
+  terraform workspace select {{ args }} {{ lowercase(env) }}
 
 # Plan Terraform changes
 [group('apply')]
-plan env +args="":
+plan env="dev" +args="":
   terraform plan --var="environment={{ env }}" {{ args }}
 
 # Apply Terraform changes
 [group('apply')]
-apply env +args="":
+apply env="dev" +args="":
   terraform apply --var="environment={{ env }}" {{ args }}
 
 # Apply all changes

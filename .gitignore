@@ -50,6 +50,7 @@ htmlcov/
 *.tfstate.backup
 *.tfplan
 
+.config.local.tfbackend
 .config.dev.tfbackend
 .config.prod.tfbackend
 
@@ -59,6 +60,8 @@ htmlcov/
 # Environment variables
 .env
 .env.local
+.env.dev
+.env.prod
 
 # LocalStack
 volume/

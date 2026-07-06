@@ -1,5 +1,4 @@
-# Load environment variables from .env file
-set dotenv-load
+set dotenv-required := true
 
 # Infrastructure
 [group('infra')]
@@ -16,7 +15,6 @@ mod services
 # Functional tests
 [group('tests')]
 mod e2e 'tests'
-
 
 # Default recipe - show available commands
 help:
