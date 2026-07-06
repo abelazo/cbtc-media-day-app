@@ -4,7 +4,7 @@ import '../recipes.infra.just'
 help:
   @just --list
 
-# Initialize Terraform (global stack)
+# Initialize Terraform (api-gateway stack)
 [group('init')]
 setup env +args="":
   @echo 'Creating tfbackend for {{BOLD + RED}}{{ env }}{{NORMAL}} environment'
@@ -12,7 +12,7 @@ setup env +args="":
   sed -i '' "s|<terraform.state.bucket>|$TF_STATE_BUCKET|" .config.local.tfbackend
   sed -i '' "s|<aws.region>|$AWS_REGION|" .config.local.tfbackend
 
-# Initialize Terraform (global stack)
+# Initialize Terraform (api-gateway stack)
 [group('init')]
 init env="dev" +args="": (clean) (setup env)
   @echo 'Initalizing for {{BOLD + RED}}{{ env }}{{NORMAL}} environment'
