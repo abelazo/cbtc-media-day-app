@@ -9,8 +9,9 @@ help:
 setup env +args="":
   @echo 'Creating tfbackend for {{BOLD + RED}}{{ env }}{{NORMAL}} environment'
   cp .config.tfbackend.example .config.local.tfbackend
-  sed -i '' "s|<terraform.state.bucket>|$TF_STATE_BUCKET|" .config.local.tfbackend
-  sed -i '' "s|<aws.region>|$AWS_REGION|" .config.local.tfbackend
+  sed -i.bak "s|<terraform.state.bucket>|$TF_STATE_BUCKET|" .config.local.tfbackend
+  sed -i.bak "s|<aws.region>|$AWS_REGION|" .config.local.tfbackend
+  rm -f .config.local.tfbackend.bak
 
 # Initialize Terraform (api-gateway stack)
 [group('init')]
