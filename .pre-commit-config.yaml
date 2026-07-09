@@ -7,7 +7,7 @@ default_install_hook_types:
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+    rev: v0.15.21
     hooks:
       # Run the linter
       - id: ruff-check
@@ -26,7 +26,7 @@ repos:
       - id: mixed-line-ending
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.15.0
+    rev: v4.16.4
     hooks:
       - id: commitizen
 
@@ -37,20 +37,20 @@ repos:
         args: [-d, "{rules: {line-length: {max: 160}}}"]
 
   - repo: https://github.com/sirosen/check-jsonschema
-    rev: 0.37.2
+    rev: 0.37.4
     hooks:
       - id: check-github-actions
       - id: check-github-workflows
 
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.105.0
+    rev: v1.108.0
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
       - id: terraform_tflint
 
   - repo: https://github.com/bridgecrewio/checkov.git
-    rev: '3.2.526'
+    rev: '3.3.8'
     hooks:
 #      - id: checkov
 #        verbose: false
