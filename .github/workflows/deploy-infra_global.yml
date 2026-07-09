@@ -122,6 +122,9 @@ jobs:
       - name: Terraform Init
         run: just init ${{ matrix.environment }}
 
+      - name: Terraform Workspace
+        run: just workspace ${{ matrix.environment }}
+
       - name: Terraform Plan
         run: just plan ${{ matrix.environment }} -var="release_version=infra-global-v${{ needs.release.outputs.new_release_version }}"
 
