@@ -2,7 +2,7 @@
 
 # Initialize Terraform (no backend)
 [group('init')]
-init_no_bakend +args="":
+init_no_backend +args="":
   @echo 'Initalizing without environment'
   terraform init --reconfigure --backend=false {{ args }}
 
