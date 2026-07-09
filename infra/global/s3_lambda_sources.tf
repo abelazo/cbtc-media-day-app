@@ -36,6 +36,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "lambda_sources" {
   bucket = aws_s3_bucket.lambda_sources.id
 
   rule {
+    blocked_encryption_types = ["SSE-C"]
+    bucket_key_enabled       = false
+
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
@@ -66,4 +69,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_packages" {
       days_after_initiation = 7
     }
   }
+}
+
+resource "aws_lambda_code_signing_config" "lambdas" {
+  description = "Code signing configuration for Lambda functions"
+
+  allowed_publishers {
+    signing_profile_version_arns = [
+      aws_signer_signing_profile.lambdas.version_arn,
+    ]
+  }
+
+  policies {
+    untrusted_artifact_on_deployment = "Enforce" # Block deployments that fail code signing validation
+  }
+
+  tags = {
+    Purpose = "code-signing"
+  }
+}
+
+resource "aws_signer_signing_profile" "lambdas" {
+  platform_id = "AWSLambda-SHA384-ECDSA"
 }
