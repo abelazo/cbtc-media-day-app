@@ -94,6 +94,9 @@ jobs:
     defaults:
       run:
         working-directory: infra/global
+    env:
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
 
     steps:
       - name: Checkout code
