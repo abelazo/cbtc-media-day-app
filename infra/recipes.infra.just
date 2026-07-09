@@ -1,5 +1,11 @@
 # Terraform recipes
 
+# Initialize Terraform (no backend)
+[group('init')]
+init_no_bakend +args="":
+  @echo 'Initalizing without environment'
+  terraform init --reconfigure --backend=false {{ args }}
+
 # Workspaces
 [group('state')]
 workspace env="dev" +args="":

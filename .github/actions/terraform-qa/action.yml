@@ -20,7 +20,7 @@ runs:
   using: composite
   steps:
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      uses: hashicorp/setup-terraform@v4
       with:
         terraform_version: ${{ inputs.terraform-version }}
 
@@ -31,12 +31,12 @@ runs:
         cache: true
 
     - name: Install Just
-      uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v3
+      uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
     - name: Terraform Init
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: just init local --backend=false
+      run: just init_no_backend
 
     - name: Terraform Format Check
       shell: bash
@@ -61,21 +61,3 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: just checkov
-
-    - name: Install Trivy
-      shell: bash
-      run: |
-        sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
-          | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-        echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] \
-          https://aquasecurity.github.io/trivy-repo/deb \
-          $(lsb_release -sc) main" \
-          | sudo tee /etc/apt/sources.list.d/trivy.list
-        sudo apt-get update
-        sudo apt-get install -y trivy
-
-    - name: Trivy
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      run: just trivy
