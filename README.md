@@ -1,11 +1,11 @@
 # CBTC Media Day
 
-| Pipeline                        | Status                                                                                                                                                                                                                                              |
-|---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Deploy - Global                 | [![Deploy - Global](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml)                                            |
-| λ - Authorizer                  | [![λ - Authorizer](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml)                                   |
-| λ - Content                     | [![λ - Content](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml)                                            |
-| Deploy - API Gateway            | [![Deploy - API Gateway](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml)                             |
+| Pipeline             | Status                                                                                                                                                                                                                  |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deploy - Global      | [![Deploy - Global](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml)                |
+| λ - Authorizer       | [![λ - Authorizer](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml)       |
+| λ - Content          | [![λ - Content](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml)                |
+| Deploy - API Gateway | [![Deploy - API Gateway](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml) |
 
 A serverless AWS application built with Python 3.12 and Terraform, following Test-Driven Development (TDD) principles.
 
@@ -129,6 +129,7 @@ Four independent pipelines, one per stack, each with its own semantic-release ve
 - **Deploy - API Gateway** (`infra/api-gateway/**`) — tag `api-gateway-vX.Y.Z`.
 
 Per-environment deploy tracking:
+
 - Moving Git tag `<stack>-deployed-<env>` force-updated to the deployed commit.
 - `DeployedVersion = <stack>-vX.Y.Z` tag on every taggable AWS resource.
 - Lambda `Description` set to the release version.

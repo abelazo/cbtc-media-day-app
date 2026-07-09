@@ -10,7 +10,7 @@ inputs:
   terraform-version:
     description: Terraform version to install
     required: false
-    default: "1.13.1"
+    default: "1.15.8"
   tflint-version:
     description: TFLint version to install
     required: false
