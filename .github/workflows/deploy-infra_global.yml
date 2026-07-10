@@ -98,6 +98,9 @@ jobs:
     name: Deploy (dev)
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      id-token: write
+      contents: write
     uses: ./.github/workflows/_deploy-infra_global-env.yml
     with:
       environment: dev
@@ -108,6 +111,9 @@ jobs:
     name: Deploy (prod)
     needs: [release, deploy-dev]
     if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      id-token: write
+      contents: write
     uses: ./.github/workflows/_deploy-infra_global-env.yml
     with:
       environment: prod
