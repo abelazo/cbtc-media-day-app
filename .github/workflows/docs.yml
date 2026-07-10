@@ -1,5 +1,5 @@
 ---
-name: "Deploy - Docs"
+name: "Docs"
 run-name: >-
   ${{
     github.event_name == 'push'
@@ -14,7 +14,7 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
-      - '.github/workflows/deploy-docs.yml'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
