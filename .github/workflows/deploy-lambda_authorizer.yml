@@ -21,20 +21,13 @@ permissions:
   contents: read
 
 jobs:
-  unit-tests:
-    name: Unit Tests
-    uses: ./.github/workflows/template_tests-ut.yml
-    with:
-      service-name: 'authorizer'
-
-  qa:
-    name: QA Checks (infra)
-    needs: unit-tests
+  terraform-qa:
+    name: Terraform QA
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -43,162 +36,255 @@ jobs:
         with:
           working-directory: services/authorizer/infra
 
-  release:
-    name: Semantic Release
-    needs: qa
-    if: github.event_name == 'push'
+  code-qa:
+    name: Code QA
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-    outputs:
-      new_release_published: ${{ steps.release.outputs.new_release_published }}
-      new_release_version: ${{ steps.release.outputs.new_release_version }}
-    defaults:
-      run:
-        working-directory: services/authorizer/infra
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
-        with:
-          node-version: '24'
-
-      - name: Run semantic-release
-        id: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npx -y semantic-release@25
-          NEW_TAG=$(git tag --points-at HEAD --list 'authorizer-v*' | head -n1)
-          if [ -n "$NEW_TAG" ]; then
-            echo "new_release_published=true" >> "$GITHUB_OUTPUT"
-            echo "new_release_version=${NEW_TAG#authorizer-v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "new_release_published=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  build:
-    name: Build + Sign + Upload (${{ matrix.environment }})
-    needs: release
-    if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    environment: ${{ matrix.environment }}
-    strategy:
-      max-parallel: 1
-      matrix:
-        environment: [dev, prod]
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
         with:
-          terraform_version: 1.13.1
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Init global stack (read-only)
-        working-directory: infra/global
-        run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-      # TODO: activate when confident
-      # - name: Build, sign, and upload lambda
-      #   working-directory: services/authorizer
-      #   run: bash build.sh
-
-  deploy:
-    name: Deploy (${{ matrix.environment }})
-    needs: [release, build]
-    if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    environment: ${{ matrix.environment }}
-    strategy:
-      max-parallel: 1
-      matrix:
-        environment: [dev, prod]
-    permissions:
-      id-token: write
-      contents: write
-    defaults:
-      run:
-        working-directory: services/authorizer/infra
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: 1.13.1
+          enable-cache: true
 
       - name: Install Just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
+      - name: Install dependencies
+        run: just sync authorizer
 
-      - name: Terraform Init
-        run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
+      - name: Lint
+        working-directory: services/authorizer
+        run: just lint
 
-      - name: Terraform Plan
-        run: just plan ${{ matrix.environment }} -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
+      - name: Test
+        working-directory: services/authorizer
+        run: just test
 
-      # TODO: activate apply + post-deploy tracking when confident
-      # - name: Terraform Apply
-      #   run: just apply ${{ matrix.environment }} --auto-approve -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
-      #
-      # - name: Move deployment tag
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     TAG="authorizer-deployed-${{ matrix.environment }}"
-      #     git tag -f "$TAG"
-      #     git push -f origin "refs/tags/$TAG"
-      #
-      # - name: Append audit log entry
-      #   env:
-      #     AUDIT_BUCKET: ${{ secrets.AUDIT_BUCKET }}
-      #   run: |
-      #     RECORD=$(jq -nc \
-      #       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-      #       --arg stack "authorizer" \
-      #       --arg version "authorizer-v${{ needs.release.outputs.new_release_version }}" \
-      #       --arg env "${{ matrix.environment }}" \
-      #       --arg commit "${{ github.sha }}" \
-      #       --arg actor "${{ github.actor }}" \
-      #       '{ts: $ts, stack: $stack, version: $version, env: $env, commit: $commit, actor: $actor}')
-      #     TMP=$(mktemp)
-      #     aws s3 cp "s3://${AUDIT_BUCKET}/deployments.jsonl" "$TMP" 2>/dev/null || true
-      #     echo "$RECORD" >> "$TMP"
-      #     aws s3 cp "$TMP" "s3://${AUDIT_BUCKET}/deployments.jsonl"
+      - name: Build
+        working-directory: services/authorizer
+        run: just build
+
+  # release:
+  #   name: Semantic Release
+  #   needs: [terraform-qa, code-qa]
+  #   if: github.event_name == 'push'
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #     issues: write
+  #     pull-requests: write
+  #   outputs:
+  #     new_release_published: ${{ steps.release.outputs.new_release_published }}
+  #     new_release_version: ${{ steps.release.outputs.new_release_version }}
+  #   defaults:
+  #     run:
+  #       working-directory: services/authorizer/infra
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v7
+  #       with:
+  #         fetch-depth: 0
+  #         persist-credentials: true
+
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v6
+  #       with:
+  #         node-version: '24'
+
+  #     - name: Run semantic-release
+  #       id: release
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       run: |
+  #         npx -y semantic-release@25
+  #         NEW_TAG=$(git tag --points-at HEAD --list 'authorizer-v*' | head -n1)
+  #         if [ -n "$NEW_TAG" ]; then
+  #           echo "new_release_published=true" >> "$GITHUB_OUTPUT"
+  #           echo "new_release_version=${NEW_TAG#authorizer-v}" >> "$GITHUB_OUTPUT"
+  #         else
+  #           echo "new_release_published=false" >> "$GITHUB_OUTPUT"
+  #         fi
+
+  # deploy-dev:
+  #   name: Upload + Deploy (dev)
+  #   needs: release
+  #   if: needs.release.outputs.new_release_published == 'true'
+  #   runs-on: ubuntu-latest
+  #   environment: dev
+  #   permissions:
+  #     id-token: write
+  #     contents: write
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v7
+  #       with:
+  #         fetch-depth: 0
+  #         persist-credentials: true
+
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v6
+  #       with:
+  #         python-version: '3.12'
+
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@v8.3.2
+  #       with:
+  #         enable-cache: true
+
+  #     - name: Setup Terraform
+  #       uses: hashicorp/setup-terraform@v4
+  #       with:
+  #         terraform_version: 1.15.8
+
+  #     - name: Install Just
+  #       uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v6
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         aws-region: eu-west-1
+
+  #     - name: Init global stack (read-only)
+  #       working-directory: infra/global
+  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
+
+  #     - name: Terraform Init
+  #       working-directory: services/authorizer/infra
+  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
+
+  #     - name: Terraform Plan
+  #       working-directory: services/authorizer/infra
+  #       run: just plan dev -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
+
+  #     # TODO: activate apply + post-deploy tracking when confident
+  #     # - name: Terraform Apply
+  #     #   working-directory: services/authorizer/infra
+  #     #   run: just apply dev --auto-approve -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
+  #     #
+  #     # - name: Move deployment tag
+  #     #   env:
+  #     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     #   run: |
+  #     #     TAG="authorizer-deployed-dev"
+  #     #     git tag -f "$TAG"
+  #     #     git push -f origin "refs/tags/$TAG"
+  #     #
+  #     # - name: Append audit log entry
+  #     #   env:
+  #     #     AUDIT_BUCKET: ${{ secrets.AUDIT_BUCKET }}
+  #     #   run: |
+  #     #     RECORD=$(jq -nc \
+  #     #       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  #     #       --arg stack "authorizer" \
+  #     #       --arg version "authorizer-v${{ needs.release.outputs.new_release_version }}" \
+  #     #       --arg env "dev" \
+  #     #       --arg commit "${{ github.sha }}" \
+  #     #       --arg actor "${{ github.actor }}" \
+  #     #       '{ts: $ts, stack: $stack, version: $version, env: $env, commit: $commit, actor: $actor}')
+  #     #     TMP=$(mktemp)
+  #     #     aws s3 cp "s3://${AUDIT_BUCKET}/deployments.jsonl" "$TMP" 2>/dev/null || true
+  #     #     echo "$RECORD" >> "$TMP"
+  #     #     aws s3 cp "$TMP" "s3://${AUDIT_BUCKET}/deployments.jsonl"
+
+  # deploy-prod:
+  #   name: Upload + Deploy (prod)
+  #   needs: [release, deploy-dev]
+  #   if: needs.release.outputs.new_release_published == 'true'
+  #   runs-on: ubuntu-latest
+  #   environment: prod
+  #   permissions:
+  #     id-token: write
+  #     contents: write
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v7
+  #       with:
+  #         fetch-depth: 0
+  #         persist-credentials: true
+
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v6
+  #       with:
+  #         python-version: '3.12'
+
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@v8.3.2
+  #       with:
+  #         enable-cache: true
+
+  #     - name: Setup Terraform
+  #       uses: hashicorp/setup-terraform@v4
+  #       with:
+  #         terraform_version: 1.15.8
+
+  #     - name: Install Just
+  #       uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v6
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         aws-region: eu-west-1
+
+  #     - name: Init global stack (read-only)
+  #       working-directory: infra/global
+  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
+
+  #     # TODO: activate when confident
+  #     # - name: Build + upload + sign lambda
+  #     #   working-directory: services/authorizer
+  #     #   run: |
+  #     #     just build
+  #     #     just upload
+
+  #     - name: Terraform Init
+  #       working-directory: services/authorizer/infra
+  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
+
+  #     - name: Terraform Plan
+  #       working-directory: services/authorizer/infra
+  #       run: just plan prod -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
+
+  #     # TODO: activate apply + post-deploy tracking when confident
+  #     # - name: Terraform Apply
+  #     #   working-directory: services/authorizer/infra
+  #     #   run: just apply prod --auto-approve -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
+  #     #
+  #     # - name: Move deployment tag
+  #     #   env:
+  #     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     #   run: |
+  #     #     TAG="authorizer-deployed-prod"
+  #     #     git tag -f "$TAG"
+  #     #     git push -f origin "refs/tags/$TAG"
+  #     #
+  #     # - name: Append audit log entry
+  #     #   env:
+  #     #     AUDIT_BUCKET: ${{ secrets.AUDIT_BUCKET }}
+  #     #   run: |
+  #     #     RECORD=$(jq -nc \
+  #     #       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  #     #       --arg stack "authorizer" \
+  #     #       --arg version "authorizer-v${{ needs.release.outputs.new_release_version }}" \
+  #     #       --arg env "prod" \
+  #     #       --arg commit "${{ github.sha }}" \
+  #     #       --arg actor "${{ github.actor }}" \
+  #     #       '{ts: $ts, stack: $stack, version: $version, env: $env, commit: $commit, actor: $actor}')
+  #     #     TMP=$(mktemp)
+  #     #     aws s3 cp "s3://${AUDIT_BUCKET}/deployments.jsonl" "$TMP" 2>/dev/null || true
+  #     #     echo "$RECORD" >> "$TMP"
+  #     #     aws s3 cp "$TMP" "s3://${AUDIT_BUCKET}/deployments.jsonl"

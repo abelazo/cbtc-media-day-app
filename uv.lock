@@ -11,7 +11,7 @@ members = [
 
 [[package]]
 name = "authorizer"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "services/authorizer" }
 dependencies = [
     { name = "boto3" },
@@ -95,7 +95,7 @@ wheels = [
 
 [[package]]
 name = "cbtc-media-day"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "python-dotenv" },
@@ -226,7 +226,7 @@ wheels = [
 
 [[package]]
 name = "content"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "services/content" }
 dependencies = [
     { name = "boto3" },

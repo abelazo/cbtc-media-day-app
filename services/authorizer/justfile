@@ -1,4 +1,4 @@
-# Authorizer service recipes
+import '../recipes.services.just'
 
 # Service-local Terraform stack
 [group('infra')]
@@ -7,50 +7,3 @@ mod infra 'infra'
 # Default recipe - show available commands
 help:
     @just --list
-
-# Run the authorizer service locally
-run:
-    @echo "Running authorizer service..."
-    uv run python -m src.handler
-    @echo "✓ Authorizer service running"
-
-# Run authorizer service tests
-test:
-    @echo "Running authorizer service tests..."
-    uv run pytest tests/ -v
-    @echo "✓ Authorizer service tests passed"
-
-# Run tests with coverage
-test-coverage:
-    @echo "Running authorizer service tests with coverage..."
-    uv run pytest tests/ --cov=src --cov-report=term-missing
-    @echo "✓ Coverage report complete"
-
-# Lint authorizer service
-lint:
-    @echo "Linting authorizer service..."
-    uv run ruff check .
-    uv run ruff format --check .
-    @echo "✓ Authorizer service linted"
-
-# Format authorizer service
-format:
-    @echo "Formatting authorizer service..."
-    uv run ruff format .
-    uv run ruff check --fix .
-    @echo "✓ Authorizer service formatted"
-
-# Build Lambda deployment package
-build:
-    echo "Building Lambda deployment package..."
-    bash build.sh
-
-# Upload Lambda package to S3 (requires global infra deployed)
-upload:
-    echo "Uploading Lambda package to S3..."
-    bash build.sh
-
-# Build and deploy Lambda package (convenience command)
-deploy:
-    echo "Building and deploying Lambda package..."
-    bash build.sh

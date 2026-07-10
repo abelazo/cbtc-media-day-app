@@ -9,30 +9,3 @@ mod content 'content'
 # Default recipe - show available commands
 help:
     @just --list
-
-# Run all service tests
-test-all:
-    @echo "Running all service tests..."
-    uv run pytest ./
-
-# Lint all services
-lint-all:
-    @echo "Linting all services..."
-    uv run ruff check .
-    uv run ruff format --check .
-
-# Format all services
-format-all:
-    @echo "Formatting all services..."
-    uv run ruff format .
-    uv run ruff check --fix .
-
-# Build all services
-build-all:
-    @echo "Building all services..."
-    @for dir in */; do \
-        if [ -f "$dir/build.sh" ]; then \
-            echo "Building service in $dir..."; \
-            (cd "$dir" && bash build.sh); \
-        fi \
-    done

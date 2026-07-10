@@ -175,11 +175,21 @@ Commit-order coupling: pipelines do NOT orchestrate each other. If a downstream 
 
 ## GitHub Actions
 
-All third-party actions must use pinned SHA hashes with a version comment:
+Always use the latest available version of any third-party action.
+
+**Trusted orgs** (`actions`, `astral-sh`, `hashicorp`, `aws-actions`) — use a plain version tag, no SHA pin:
+
+```yaml
+uses: actions/checkout@v7
+```
+
+**Everyone else** — pinned SHA hash with a version comment (the tag itself must never appear after the `@`, only the full commit SHA; the version is a trailing comment for humans):
 
 ```yaml
 uses: owner/action@<full-commit-sha> # vX.Y.Z
 ```
+
+Example: `uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0`
 
 To get the SHA for a tag:
 
