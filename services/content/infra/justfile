@@ -1,2 +1,4 @@
-import '../../../infra/recipes.infra.just'
 import '../../recipes.infra.just'
+
+help:
+  just --list

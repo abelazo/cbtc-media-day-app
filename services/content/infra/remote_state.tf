@@ -5,7 +5,7 @@ data "terraform_remote_state" "global" {
 
   config = {
     bucket = "cbtc-terraform-state-${var.environment}-${data.aws_caller_identity.current.account_id}"
-    key    = "global.tfstate"
+    key    = "env:/${var.environment}/global.tfstate"
     region = var.aws_region
   }
 }
