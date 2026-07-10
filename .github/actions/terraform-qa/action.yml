@@ -39,25 +39,80 @@ runs:
       run: just init_no_backend
 
     - name: Terraform Format Check
+      id: fmt
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: just fmt
+      continue-on-error: true
+      run: |
+        log=$(mktemp)
+        echo "log=$log" >> "$GITHUB_OUTPUT"
+        just fmt 2>&1 | tee "$log"
 
     - name: Terraform Validate
+      id: validate
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: just validate
+      continue-on-error: true
+      run: |
+        log=$(mktemp)
+        echo "log=$log" >> "$GITHUB_OUTPUT"
+        just validate 2>&1 | tee "$log"
 
     - name: Terraform TFLint
+      id: tflint
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: just lint
+      continue-on-error: true
+      run: |
+        log=$(mktemp)
+        echo "log=$log" >> "$GITHUB_OUTPUT"
+        just lint 2>&1 | tee "$log"
 
     - name: Install Checkov
       shell: bash
       run: pip install checkov
 
     - name: Checkov
+      id: checkov
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: just checkov
+      continue-on-error: true
+      run: |
+        log=$(mktemp)
+        echo "log=$log" >> "$GITHUB_OUTPUT"
+        just checkov 2>&1 | tee "$log"
+
+    - name: QA Summary
+      if: always()
+      shell: bash
+      run: |
+        print_result() {
+          name="$1"; outcome="$2"; log="$3"
+          if [ "$outcome" = "success" ]; then
+            echo "🟢 $name"
+          else
+            echo "🔴 $name"
+            echo
+            echo '```'
+            cat "$log" 2>/dev/null
+            echo '```'
+          fi
+          echo
+        }
+        {
+          print_result "Terraform fmt" "${{ steps.fmt.outcome }}" "${{ steps.fmt.outputs.log }}"
+          print_result "Terraform validate" "${{ steps.validate.outcome }}" "${{ steps.validate.outputs.log }}"
+          print_result "Terraform tflint" "${{ steps.tflint.outcome }}" "${{ steps.tflint.outputs.log }}"
+          print_result "Checkov" "${{ steps.checkov.outcome }}" "${{ steps.checkov.outputs.log }}"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Enforce QA result
+      if: always()
+      shell: bash
+      run: |
+        for outcome in "${{ steps.fmt.outcome }}" "${{ steps.validate.outcome }}" "${{ steps.tflint.outcome }}" "${{ steps.checkov.outcome }}"; do
+          if [ "$outcome" != "success" ]; then
+            echo "One or more QA checks failed. See summary above."
+            exit 1
+          fi
+        done
