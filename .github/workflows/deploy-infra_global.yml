@@ -98,96 +98,18 @@ jobs:
     name: Deploy (dev)
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    environment: dev
-    permissions:
-      id-token: write
-      contents: write
-    defaults:
-      run:
-        working-directory: infra/global
-    env:
-      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.15.8
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Install Just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-      - name: Terraform Init
-        run: just init dev
-
-      - name: Terraform Workspace
-        run: just workspace dev
-
-      - name: Terraform Plan
-        run: just plan dev -var="release_version=infra-global-v${{ needs.release.outputs.new_release_version }}"
-
-      - name: Terraform Apply
-        run: just apply dev --auto-approve -var="release_version=infra-global-v${{ needs.release.outputs.new_release_version }}"
+    uses: ./.github/workflows/_deploy-infra_global-env.yml
+    with:
+      environment: dev
+      release_version: infra-global-v${{ needs.release.outputs.new_release_version }}
+    secrets: inherit
 
   deploy-prod:
     name: Deploy (prod)
     needs: [release, deploy-dev]
     if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    environment: prod
-    permissions:
-      id-token: write
-      contents: write
-    defaults:
-      run:
-        working-directory: infra/global
-    env:
-      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.15.8
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Install Just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-      - name: Terraform Init
-        run: just init prod
-
-      - name: Terraform Workspace
-        run: just workspace prod
-
-      - name: Terraform Plan
-        run: just plan prod -var="release_version=infra-global-v${{ needs.release.outputs.new_release_version }}"
-
-      - name: Terraform Apply
-        run: just apply prod --auto-approve -var="release_version=infra-global-v${{ needs.release.outputs.new_release_version }}"
+    uses: ./.github/workflows/_deploy-infra_global-env.yml
+    with:
+      environment: prod
+      release_version: infra-global-v${{ needs.release.outputs.new_release_version }}
+    secrets: inherit

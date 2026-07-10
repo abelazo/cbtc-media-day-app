@@ -1,0 +1,60 @@
+---
+name: "[Workflow] Deploy - Global (env)"
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Deploy (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: write
+    defaults:
+      run:
+        working-directory: infra/global
+    env:
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-west-1
+
+      - name: Install Just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+      - name: Terraform Init
+        run: just init ${{ inputs.environment }}
+
+      - name: Terraform Workspace
+        run: just workspace ${{ inputs.environment }}
+
+      - name: Terraform Plan
+        run: just plan ${{ inputs.environment }} -var="release_version=${{ inputs.release_version }}"
+
+      - name: Terraform Apply
+        run: just apply ${{ inputs.environment }} --auto-approve -var="release_version=${{ inputs.release_version }}"
