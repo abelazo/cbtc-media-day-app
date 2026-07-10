@@ -1,17 +1,2 @@
 import '../../../infra/recipes.infra.just'
-
-# Default recipe - show available commands
-help:
-  @just --list
-
-# Initialize Terraform (content stack)
-[group('init')]
-init env +args="":
-  terraform init --reconfigure --backend-config=.config.{{env}}.tfbackend {{args}}
-
-# Clean up
-[group('init')]
-clean:
-  @echo "Cleaning up..."
-  rm -rf .terraform
-  rm -rf .terraform.lock.hcl
+import '../../recipes.infra.just'

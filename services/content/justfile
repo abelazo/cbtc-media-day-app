@@ -1,4 +1,4 @@
-# Content service recipes
+import '../recipes.services.just'
 
 # Service-local Terraform stack
 [group('infra')]
@@ -7,50 +7,3 @@ mod infra 'infra'
 # Default recipe - show available commands
 help:
     @just --list
-
-# Run the content service locally
-run:
-    @echo "Running content service..."
-    uv run python -m src.handler
-    @echo "✓ Content service running"
-
-# Run content service tests
-test:
-    @echo "Running content service tests..."
-    uv run pytest tests/ -v
-    @echo "✓ Content service tests passed"
-
-# Run tests with coverage
-test-coverage:
-    @echo "Running content service tests with coverage..."
-    uv run pytest tests/ --cov=src --cov-report=term-missing
-    @echo "✓ Coverage report complete"
-
-# Lint content service
-lint:
-    @echo "Linting content service..."
-    uv run ruff check .
-    uv run ruff format --check .
-    @echo "✓ Content service linted"
-
-# Format content service
-format:
-    @echo "Formatting content service..."
-    uv run ruff format .
-    uv run ruff check --fix .
-    @echo "✓ Content service formatted"
-
-# Build Lambda deployment package
-build:
-    echo "Building Lambda deployment package..."
-    bash build.sh
-
-# Upload Lambda package to S3 (requires global infra deployed)
-upload:
-    echo "Uploading Lambda package to S3..."
-    bash build.sh
-
-# Build and deploy Lambda package (convenience command)
-deploy:
-    echo "Building and deploying Lambda package..."
-    bash build.sh
