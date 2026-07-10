@@ -7,14 +7,7 @@ Four independent pipelines, one per stack, each with its own semantic-release ve
 - **λ - Content** (`services/content/**`) — tag `content-vX.Y.Z`, builds + signs + uploads lambda artifact.
 - **Deploy - API Gateway** (`infra/api-gateway/**`) — tag `api-gateway-vX.Y.Z`.
 
-## Pipeline Status
-
-| Pipeline             | Status                                                                                                                                                                                                                  |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Deploy - Global      | [![Deploy - Global](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_global.yml)                |
-| λ - Authorizer       | [![λ - Authorizer](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_authorizer.yml)       |
-| λ - Content          | [![λ - Content](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-lambda_content.yml)                |
-| Deploy - API Gateway | [![Deploy - API Gateway](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day/actions/workflows/deploy-infra_api-gateway.yml) |
+Pipeline status badges: see [README](../../README.md).
 
 ## Per-environment deploy tracking
 
