@@ -1,0 +1,10 @@
+help:
+  just --list
+
+# Serve documentation locally with live reload
+serve:
+  uv run --extra docs mkdocs serve --config-file ../mkdocs.yml
+
+# Build the static site (fails on nav/link warnings)
+build:
+  uv run --extra docs mkdocs build --config-file ../mkdocs.yml --strict

@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. Audience: the agent — terse, operational, non-obvious gotchas. Human-facing docs (tutorials, how-tos, explanations) live in [`/docs`](docs/README.md); this file doesn't duplicate those.
 
 ## Project Overview
 
 CBTC Media Day is a serverless AWS application for managing and distributing media day photos. It's a monorepo containing Lambda services, Terraform infrastructure, and a React frontend.
+
+**Follow the [Development Methodology](#development-methodology) (TDD) below for any feature or bugfix**: spec → functional test → unit tests → implement.
 
 ## Build & Development Commands
 
@@ -67,13 +69,16 @@ Deploy order: `global` → (`authorizer` ∥ `content`) → `api-gateway`. The `
 
 ### Directory Structure
 
-- `services/` — Lambda functions, each a separate uv workspace with its own `pyproject.toml`, `justfile`, and Terraform stack under `infra/`:
-  - `services/authorizer/` — API Gateway custom authorizer Lambda (`infra/` = authorizer stack).
-  - `services/content/` — Content Service Lambda (`infra/` = content stack).
-- `infra/` — Shared Terraform stacks: `bootstrap`, `global`, `api-gateway`.
-- `app/` — React 19 + Vite + Bun frontend (single-page, one form component).
-- `tests/functional/` — E2E tests organized by user story (`us_002_test.py`, etc.).
-- `docs/user_stories/` — Feature specs (US-001 through US-005).
+```
+/.github/workflows/   # CI/CD pipelines (one per stack, see CI/CD Pipelines below)
+/app/                 # React 19 + Vite + Bun frontend (single-page, one form component)
+/docs/                # Human-facing docs (Diataxis: tutorials/how-to-guides/reference/explanation) + architecture/
+/infra/               # Shared Terraform stacks: bootstrap, global, api-gateway
+/services/            # Lambda functions, each a separate uv workspace with pyproject.toml, justfile, infra/
+    authorizer/       # API Gateway custom authorizer Lambda (infra/ = authorizer stack)
+    content/          # Content Service Lambda (infra/ = content stack)
+/tests/functional/    # E2E tests organized by user story (us_002_test.py, etc.)
+```
 
 ### Request Flow
 
@@ -187,9 +192,10 @@ curl -s "https://api.github.com/repos/<owner>/<action>/git/tags/<sha>" | python3
 
 ## Development Methodology
 
-TDD organized around user stories:
+**Mandatory for every feature/bugfix — do not skip steps or write implementation before tests.**
 
-1. Create spec in `docs/user_stories/US-XXX.md`
-2. Write functional test in `tests/functional/us_xxx_test.py`
-3. Write unit tests in `services/<service>/tests/`
-4. Implement to pass tests
+1. Write functional test in `tests/functional/us_xxx_test.py`
+2. Write unit tests in `services/<service>/tests/`
+3. Implement to pass tests
+
+Rationale/background: [docs/explanation/tdd-methodology.md](docs/explanation/tdd-methodology.md).

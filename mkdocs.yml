@@ -1,0 +1,48 @@
+site_name: CBTC Media Day
+site_description: Documentation for the CBTC Media Day application
+site_url: https://abelazo.github.io/cbtc-media-day-app/
+repo_url: https://github.com/abelazo/cbtc-media-day-app
+docs_dir: docs
+site_dir: site
+
+exclude_docs: |
+  justfile
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+validation:
+  links:
+    # explanation/ pages intentionally link out to repo-root CLAUDE.md and
+    # .github/CONTRIBUTING.md, which live outside docs_dir and aren't part
+    # of the built site.
+    not_found: info
+
+nav:
+  - Home: README.md
+  - Tutorials:
+      - Overview: tutorials/README.md
+      - Getting Started: tutorials/getting-started.md
+  - How-To Guides:
+      - Overview: how-to-guides/README.md
+      - Code Quality: how-to-guides/code-quality.md
+      - Running Tests: how-to-guides/running-tests.md
+  - Reference:
+      - Overview: reference/README.md
+      - CI/CD Pipelines: reference/ci-cd-pipelines.md
+      - Technology Stack: reference/technology-stack.md
+  - Explanation:
+      - Overview: explanation/README.md
+      - Architecture: explanation/architecture.md
+      - TDD Methodology: explanation/tdd-methodology.md
+  - Architecture Overview: architecture/overview.md

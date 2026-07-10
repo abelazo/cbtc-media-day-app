@@ -4,13 +4,14 @@ This directory contains all project documentation for the CBTC Media Day applica
 
 ## Structure
 
-### `/user_stories/`
-Contains User Story definitions that drive development. Each story includes:
-- Title and description
-- Acceptance criteria
-- Impact and rationale
+Docs organized per the [Diataxis](https://diataxis.fr/) framework — four modes, by what reader needs:
 
-**Naming convention**: `<user_story_id>.md` (e.g., `US001.md`)
+- [`/tutorials/`](tutorials/README.md) — learning-oriented, hand-holding walkthroughs.
+- [`/how-to-guides/`](how-to-guides/README.md) — task-oriented, solve a specific problem.
+- [`/reference/`](reference/README.md) — information-oriented, dry technical description.
+- [`/explanation/`](explanation/README.md) — understanding-oriented, background and why.
+
+Plus project-specific dirs (predate/sit alongside Diataxis):
 
 ### `/architecture/`
 Architecture documentation including:
@@ -24,33 +25,6 @@ Architecture documentation including:
 Architectural Decision Records (ADRs) documenting important technical decisions.
 
 **Naming convention**: `<number>-<title>.md` (e.g., `001-use-dynamodb-for-state.md`)
-
-## User Story Template
-
-When creating a new User Story, use this template:
-
-```markdown
-# US-XXX: [Title]
-
-**Status**: Draft | In Progress | Completed
-
-## Description
-[Context and user need for this feature]
-
-## Acceptance Criteria
-1. [Criterion 1 - must match functional test]
-2. [Criterion 2 - must match functional test]
-3. [Criterion 3 - must match functional test]
-
-## Impact / Rationale
-[Why this feature matters and its expected impact]
-
-## Technical Notes
-[Optional: Implementation considerations]
-
-## Related Stories
-[Optional: Links to related user stories]
-```
 
 ## ADR Template
 

@@ -16,10 +16,15 @@ mod services
 [group('tests')]
 mod e2e 'tests'
 
+# Documentation
+[group('docs')]
+mod docs
+
 # Default recipe - show available commands
 help:
     @just --list
 
+# TO BE REMOVED ###############################################################
 # Setup development environment for all packages
 [group('setup')]
 sync-all:
@@ -40,21 +45,3 @@ deploy-all env +args="":
     just services::authorizer::infra::apply {{env}} {{args}}
     just services::content::infra::apply {{env}} {{args}}
     just 'infra::api-gateway::apply' {{env}} {{args}}
-
-# Destroy every Terraform stack to the given env, in reverse order
-[group('orchestration')]
-destroy-all env:
-    just 'infra::api-gateway::destroy' {{env}}
-    just services::content::infra::destroy {{env}}
-    just services::authorizer::infra::destroy {{env}}
-    just infra::global::destroy {{env}}
-
-# Clean build artifacts and caches
-[group('setup')]
-clean:
-    @echo "Cleaning build artifacts..."
-    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-    find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-    find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-    find . -type f -name "*.pyc" -delete
-    @echo "✓ Cleanup complete"

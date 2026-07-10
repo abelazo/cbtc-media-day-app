@@ -17,6 +17,9 @@ dev = [
     # Code Quality
     "ruff>=0.14.8",
 ]
+docs = [
+    "mkdocs-material>=9.0",
+]
 
 [build-system]
 requires = ["hatchling"]

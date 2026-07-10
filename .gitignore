@@ -24,6 +24,9 @@ MANIFEST
 # Ruff
 .ruff_cache/
 
+# MkDocs
+site/
+
 # Virtual environments
 .venv/
 venv/
