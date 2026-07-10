@@ -1,4 +1,4 @@
-set dotenv-required := true
+set dotenv-load
 
 # Infrastructure
 [group('infra')]
