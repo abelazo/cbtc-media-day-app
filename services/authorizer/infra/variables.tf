@@ -19,5 +19,5 @@ variable "project_name" {
 variable "release_version" {
   description = "Release version stamped on every resource and on the Lambda function Description. Set by CI to e.g. authorizer-v1.4.0."
   type        = string
-  default     = "authorizer-vunreleased"
+  default     = "authorizer-v0.0.0-dev"
 }

@@ -76,26 +76,27 @@ clean:
   find . -type d -name '__pycache__' -exec rm -rf {} +
   echo "✅ Clean complete"
 
-# Upload the built package from dist/ to S3, sign it, and deploy it (requires global infra deployed)
+# Upload the built package from dist/ to S3 as <service>-<version>.zip and sign it (requires global infra deployed)
 [group('build')]
-upload:
+upload version="v0.0.0-dev":
   #!/usr/bin/env bash
   set -eo pipefail
 
   SERVICE_NAME="$(basename "$PWD")"
   DIST_DIR="dist"
   ZIP_FILE="${SERVICE_NAME}.zip"
-  S3_KEY="${SERVICE_NAME}/${ZIP_FILE}"
+  RELEASE_NAME="${SERVICE_NAME}-{{version}}"
+  S3_KEY="${SERVICE_NAME}/${RELEASE_NAME}.zip"
   SIGNED_S3_PREFIX="${SERVICE_NAME}/signed/"
 
-  # Get S3 bucket name and signing profile from global Terraform output
+  # Bucket comes from env; signing profile still from global Terraform output
+  BUCKET_NAME="${TF_LAMBDA_SOURCES_BUCKET:-}"
   pushd ../../infra/global >& /dev/null
-  BUCKET_NAME=$(terraform output -raw lambda_sources_bucket_name 2>/dev/null || echo "")
   SIGNING_PROFILE=$(terraform output -raw signing_profile_name 2>/dev/null || echo "")
   popd >& /dev/null
 
   if [ -z "$BUCKET_NAME" ]; then
-      echo "❌ Could not get bucket name from Terraform. Make sure global infrastructure is deployed first." >&2
+      echo "❌ TF_LAMBDA_SOURCES_BUCKET env var not set." >&2
       exit 1
   fi
 
@@ -138,27 +139,49 @@ upload:
       aws signer wait successful-signing-job --job-id "$JOB_ID"
 
       SIGNED_S3_KEY="${SIGNED_S3_PREFIX}${JOB_ID}.zip"
-      echo "✅ Signed artifact: s3://${BUCKET_NAME}/${SIGNED_S3_KEY}"
+      STABLE_SIGNED_KEY="${SIGNED_S3_PREFIX}${RELEASE_NAME}.zip"
 
-      # Resolve function name from service-local Terraform output
-      FUNCTION_NAME=""
-      if [ -d "infra" ]; then
-          pushd infra >& /dev/null
-          FUNCTION_NAME=$(terraform output -raw "${SERVICE_NAME}_function_name" 2>/dev/null || echo "")
-          popd >& /dev/null
-      fi
-
-      if [ -n "$FUNCTION_NAME" ] && [ "$FUNCTION_NAME" != "None" ]; then
-          echo "🚀 Updating Lambda function: $FUNCTION_NAME..."
-          aws lambda update-function-code \
-              --function-name "$FUNCTION_NAME" \
-              --s3-bucket "$BUCKET_NAME" \
-              --s3-key "$SIGNED_S3_KEY"
-          echo "✅ Lambda function updated with signed code"
-      else
-          echo "⚠️  Could not find Lambda function. Update it manually:"
-          echo "   aws lambda update-function-code --function-name <FUNCTION_NAME> --s3-bucket $BUCKET_NAME --s3-key $SIGNED_S3_KEY"
-      fi
+      # Signer names objects by job-id, not by version. Move to a stable,
+      # version-named key so callers can find it without tracking job-ids.
+      aws s3 mv "s3://${BUCKET_NAME}/${SIGNED_S3_KEY}" "s3://${BUCKET_NAME}/${STABLE_SIGNED_KEY}"
+      echo "✅ Signed artifact: s3://${BUCKET_NAME}/${STABLE_SIGNED_KEY}"
+      echo "   Run 'just update-lambda-code {{version}}' to deploy it."
   else
       echo "⏭️  Skipping code signing (signing profile unavailable)"
   fi
+
+# Point the service's Lambda function at the signed package for a given version (as produced by `upload`)
+[group('build')]
+update-lambda-code version="v0.0.0-dev":
+  #!/usr/bin/env bash
+  set -eo pipefail
+
+  SERVICE_NAME="$(basename "$PWD")"
+  BUCKET_NAME="${TF_LAMBDA_SOURCES_BUCKET:-}"
+  RELEASE_NAME="${SERVICE_NAME}-{{version}}"
+  SIGNED_S3_KEY="${SERVICE_NAME}/signed/${RELEASE_NAME}.zip"
+
+  if [ -z "$BUCKET_NAME" ]; then
+      echo "❌ TF_LAMBDA_SOURCES_BUCKET env var not set." >&2
+      exit 1
+  fi
+
+  # Resolve function name from service-local Terraform output
+  FUNCTION_NAME=""
+  if [ -d "infra" ]; then
+      pushd infra >& /dev/null
+      FUNCTION_NAME=$(terraform output -raw "${SERVICE_NAME}_function_name" 2>/dev/null || echo "")
+      popd >& /dev/null
+  fi
+
+  if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+      echo "❌ Could not resolve Lambda function name from Terraform output. Make sure the service infra is applied." >&2
+      exit 1
+  fi
+
+  echo "🚀 Updating Lambda function: $FUNCTION_NAME..."
+  aws lambda update-function-code \
+      --function-name "$FUNCTION_NAME" \
+      --s3-bucket "$BUCKET_NAME" \
+      --s3-key "$SIGNED_S3_KEY"
+  echo "✅ Lambda function updated with s3://${BUCKET_NAME}/${SIGNED_S3_KEY}"

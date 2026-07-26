@@ -127,6 +127,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      id-token: write
     outputs:
       new_release_published: ${{ steps.release.outputs.new_release_published }}
       new_release_version: ${{ steps.release.outputs.new_release_version }}
@@ -176,6 +177,33 @@ jobs:
             echo "### Release Notes"
             gh release view "$TAG" --json body -q .body
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Just
+        if: steps.release.outputs.new_release_published == 'true'
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+      - name: Setup Terraform
+        if: steps.release.outputs.new_release_published == 'true'
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+
+      - name: Configure AWS Credentials
+        if: steps.release.outputs.new_release_published == 'true'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-west-1
+
+      - name: Build lambda
+        if: steps.release.outputs.new_release_published == 'true'
+        run: just build
+
+      - name: Upload lambda
+        if: steps.release.outputs.new_release_published == 'true'
+        env:
+          TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
+        run: just upload "v${{ steps.release.outputs.new_release_version }}"
 
   # deploy-dev:
   #   name: Upload + Deploy (dev)
