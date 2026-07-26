@@ -180,7 +180,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-dev:
-    name: Deploy (dev)
+    name: Deploy λ - Authorizer (dev)
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
     permissions:
@@ -194,7 +194,7 @@ jobs:
     secrets: inherit
 
   # deploy-prod:
-  #   name: Deploy (prod)
+  #   name: Deploy λ - Authorizer (prod)
   #   needs: [release, deploy-dev]
   #   if: needs.release.outputs.new_release_published == 'true'
   #   permissions:
