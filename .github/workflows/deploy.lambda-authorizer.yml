@@ -14,6 +14,7 @@ on:
     paths:
       - 'services/authorizer/**'
       - '.github/workflows/deploy.lambda-authorizer.yml'
+      - '.github/worlflows/_deploy.lambda-env.yml'
   workflow_dispatch:
 
 permissions:
@@ -178,202 +179,30 @@ jobs:
             gh release view "$TAG" --json body -q .body
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Install Just
-        if: steps.release.outputs.new_release_published == 'true'
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-      - name: Setup Terraform
-        if: steps.release.outputs.new_release_published == 'true'
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.15.8
-
-      - name: Configure AWS Credentials
-        if: steps.release.outputs.new_release_published == 'true'
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Build lambda
-        if: steps.release.outputs.new_release_published == 'true'
-        run: just build
-
-      - name: Upload lambda
-        if: steps.release.outputs.new_release_published == 'true'
-        env:
-          TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
-        run: just upload "v${{ steps.release.outputs.new_release_version }}"
-
-  # deploy-dev:
-  #   name: Upload + Deploy (dev)
-  #   needs: release
-  #   if: needs.release.outputs.new_release_published == 'true'
-  #   runs-on: ubuntu-latest
-  #   environment: dev
-  #   permissions:
-  #     id-token: write
-  #     contents: write
-
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v7
-  #       with:
-  #         fetch-depth: 0
-  #         persist-credentials: true
-
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v6
-  #       with:
-  #         python-version: '3.12'
-
-  #     - name: Install uv
-  #       uses: astral-sh/setup-uv@v8.3.2
-  #       with:
-  #         enable-cache: true
-
-  #     - name: Setup Terraform
-  #       uses: hashicorp/setup-terraform@v4
-  #       with:
-  #         terraform_version: 1.15.8
-
-  #     - name: Install Just
-  #       uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-  #     - name: Configure AWS Credentials
-  #       uses: aws-actions/configure-aws-credentials@v6
-  #       with:
-  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-  #         aws-region: eu-west-1
-
-  #     - name: Init global stack (read-only)
-  #       working-directory: infra/global
-  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-  #     - name: Terraform Init
-  #       working-directory: services/authorizer/infra
-  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-  #     - name: Terraform Plan
-  #       working-directory: services/authorizer/infra
-  #       run: just plan dev -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
-
-  #     # TODO: activate apply + post-deploy tracking when confident
-  #     # - name: Terraform Apply
-  #     #   working-directory: services/authorizer/infra
-  #     #   run: just apply dev --auto-approve -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
-  #     #
-  #     # - name: Move deployment tag
-  #     #   env:
-  #     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #     #   run: |
-  #     #     TAG="authorizer-deployed-dev"
-  #     #     git tag -f "$TAG"
-  #     #     git push -f origin "refs/tags/$TAG"
-  #     #
-  #     # - name: Append audit log entry
-  #     #   env:
-  #     #     AUDIT_BUCKET: ${{ secrets.AUDIT_BUCKET }}
-  #     #   run: |
-  #     #     RECORD=$(jq -nc \
-  #     #       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  #     #       --arg stack "authorizer" \
-  #     #       --arg version "authorizer-v${{ needs.release.outputs.new_release_version }}" \
-  #     #       --arg env "dev" \
-  #     #       --arg commit "${{ github.sha }}" \
-  #     #       --arg actor "${{ github.actor }}" \
-  #     #       '{ts: $ts, stack: $stack, version: $version, env: $env, commit: $commit, actor: $actor}')
-  #     #     TMP=$(mktemp)
-  #     #     aws s3 cp "s3://${AUDIT_BUCKET}/deployments.jsonl" "$TMP" 2>/dev/null || true
-  #     #     echo "$RECORD" >> "$TMP"
-  #     #     aws s3 cp "$TMP" "s3://${AUDIT_BUCKET}/deployments.jsonl"
+  deploy-dev:
+    name: Deploy (dev)
+    needs: release
+    if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_deploy.lambda-env.yml
+    with:
+      environment: dev
+      service: authorizer
+      version: v${{ needs.release.outputs.new_release_version }}
+    secrets: inherit
 
   # deploy-prod:
-  #   name: Upload + Deploy (prod)
+  #   name: Deploy (prod)
   #   needs: [release, deploy-dev]
   #   if: needs.release.outputs.new_release_published == 'true'
-  #   runs-on: ubuntu-latest
-  #   environment: prod
   #   permissions:
   #     id-token: write
-  #     contents: write
-
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v7
-  #       with:
-  #         fetch-depth: 0
-  #         persist-credentials: true
-
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v6
-  #       with:
-  #         python-version: '3.12'
-
-  #     - name: Install uv
-  #       uses: astral-sh/setup-uv@v8.3.2
-  #       with:
-  #         enable-cache: true
-
-  #     - name: Setup Terraform
-  #       uses: hashicorp/setup-terraform@v4
-  #       with:
-  #         terraform_version: 1.15.8
-
-  #     - name: Install Just
-  #       uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-  #     - name: Configure AWS Credentials
-  #       uses: aws-actions/configure-aws-credentials@v6
-  #       with:
-  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-  #         aws-region: eu-west-1
-
-  #     - name: Init global stack (read-only)
-  #       working-directory: infra/global
-  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-  #     # TODO: activate when confident
-  #     # - name: Build + upload + sign lambda
-  #     #   working-directory: services/authorizer
-  #     #   run: |
-  #     #     just build
-  #     #     just upload
-
-  #     - name: Terraform Init
-  #       working-directory: services/authorizer/infra
-  #       run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-  #     - name: Terraform Plan
-  #       working-directory: services/authorizer/infra
-  #       run: just plan prod -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
-
-  #     # TODO: activate apply + post-deploy tracking when confident
-  #     # - name: Terraform Apply
-  #     #   working-directory: services/authorizer/infra
-  #     #   run: just apply prod --auto-approve -var="release_version=authorizer-v${{ needs.release.outputs.new_release_version }}"
-  #     #
-  #     # - name: Move deployment tag
-  #     #   env:
-  #     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #     #   run: |
-  #     #     TAG="authorizer-deployed-prod"
-  #     #     git tag -f "$TAG"
-  #     #     git push -f origin "refs/tags/$TAG"
-  #     #
-  #     # - name: Append audit log entry
-  #     #   env:
-  #     #     AUDIT_BUCKET: ${{ secrets.AUDIT_BUCKET }}
-  #     #   run: |
-  #     #     RECORD=$(jq -nc \
-  #     #       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  #     #       --arg stack "authorizer" \
-  #     #       --arg version "authorizer-v${{ needs.release.outputs.new_release_version }}" \
-  #     #       --arg env "prod" \
-  #     #       --arg commit "${{ github.sha }}" \
-  #     #       --arg actor "${{ github.actor }}" \
-  #     #       '{ts: $ts, stack: $stack, version: $version, env: $env, commit: $commit, actor: $actor}')
-  #     #     TMP=$(mktemp)
-  #     #     aws s3 cp "s3://${AUDIT_BUCKET}/deployments.jsonl" "$TMP" 2>/dev/null || true
-  #     #     echo "$RECORD" >> "$TMP"
-  #     #     aws s3 cp "$TMP" "s3://${AUDIT_BUCKET}/deployments.jsonl"
+  #     contents: read
+  #   uses: ./.github/workflows/_deploy.lambda-env.yml
+  #   with:
+  #     environment: prod
+  #     service: authorizer
+  #     version: v${{ needs.release.outputs.new_release_version }}
+  #   secrets: inherit

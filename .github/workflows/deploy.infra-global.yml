@@ -14,6 +14,7 @@ on:
     paths:
       - 'infra/global/**'
       - '.github/workflows/deploy.infra-global.yml'
+      - '.github/workflows/_deploy.infra-env.yml'
   workflow_dispatch:
 
 permissions:
