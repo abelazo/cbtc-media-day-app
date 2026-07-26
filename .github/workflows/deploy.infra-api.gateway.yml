@@ -1,5 +1,5 @@
 ---
-name: "Deploy - API Gateway"
+name: "Infra - API Gateway"
 run-name: >-
   ${{
     github.event_name == 'push'
@@ -8,12 +8,12 @@ run-name: >-
   }}
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'infra/api-gateway/**'
-      - '.github/workflows/deploy-infra_api-gateway.yml'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'infra/api-gateway/**'
+  #     - '.github/workflows/deploy-infra_api-gateway.yml'
   workflow_dispatch:
 
 permissions:

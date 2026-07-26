@@ -1,5 +1,5 @@
 ---
-name: "[template] Unit Tests"
+name: "[Workflow] Unit Tests"
 
 on:
   workflow_call:

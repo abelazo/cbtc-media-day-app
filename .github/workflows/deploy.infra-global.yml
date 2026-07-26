@@ -1,5 +1,5 @@
 ---
-name: "Deploy - Global"
+name: "Infra - Global"
 run-name: >-
   ${{
     github.event_name == 'push'
@@ -101,7 +101,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
-    uses: ./.github/workflows/_deploy-infra_global-env.yml
+    uses: ./.github/workflows/_deploy.infra-env.yml
     with:
       environment: dev
       release_version: infra-global-v${{ needs.release.outputs.new_release_version }}
@@ -114,7 +114,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
-    uses: ./.github/workflows/_deploy-infra_global-env.yml
+    uses: ./.github/workflows/_deploy.infra-env.yml
     with:
       environment: prod
       release_version: infra-global-v${{ needs.release.outputs.new_release_version }}

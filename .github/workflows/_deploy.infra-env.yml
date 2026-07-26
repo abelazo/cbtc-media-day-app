@@ -1,5 +1,5 @@
 ---
-name: "[Workflow] Deploy - Global (env)"
+name: "[Workflow] Infra - Env"
 
 on:
   workflow_call:

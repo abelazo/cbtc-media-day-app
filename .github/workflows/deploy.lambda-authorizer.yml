@@ -14,7 +14,6 @@ on:
     paths:
       - 'services/authorizer/**'
       - '.github/workflows/deploy-lambda_authorizer.yml'
-      - '.github/workflows/template_tests-*.yml'
   workflow_dispatch:
 
 permissions:
