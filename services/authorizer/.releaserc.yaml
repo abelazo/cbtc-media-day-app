@@ -18,10 +18,10 @@ plugins:
         - {type: build, release: false}
         - {type: ci, release: false}
         # Allow only auth scoped commits (overrides suppression above)
-        - {scope: auth, type: refactor, release: patch}
-        - {scope: auth, type: perf, release: patch}
-        - {scope: auth, type: fix, release: patch}
-        - {scope: auth, type: feat, release: minor}
-        - {scope: auth, breaking: true, release: major}
+        - {scope: authorizer, type: refactor, release: patch}
+        - {scope: authorizer, type: perf, release: patch}
+        - {scope: authorizer, type: fix, release: patch}
+        - {scope: authorizer, type: feat, release: minor}
+        - {scope: authorizer, breaking: true, release: major}
   - "@semantic-release/release-notes-generator"
   - "@semantic-release/github"
