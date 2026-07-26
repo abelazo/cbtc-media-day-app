@@ -185,7 +185,7 @@ jobs:
     if: needs.release.outputs.new_release_published == 'true'
     permissions:
       id-token: write
-      contents: read
+      contents: write
     uses: ./.github/workflows/_deploy.lambda-env.yml
     with:
       environment: dev
@@ -199,7 +199,7 @@ jobs:
   #   if: needs.release.outputs.new_release_published == 'true'
   #   permissions:
   #     id-token: write
-  #     contents: read
+  #     contents: write
   #   uses: ./.github/workflows/_deploy.lambda-env.yml
   #   with:
   #     environment: prod
