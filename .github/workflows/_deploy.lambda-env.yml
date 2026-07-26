@@ -127,4 +127,4 @@ jobs:
       - name: Update λ code
         env:
           TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
-        run: just update-lambda-code "${{ inputs.version }}"
+        run: just update-lambda-code "${{ inputs.environment }}" "${{ inputs.version }}"

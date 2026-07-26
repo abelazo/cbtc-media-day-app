@@ -15,7 +15,7 @@ resource "aws_lambda_function" "authorizer" {
   reserved_concurrent_executions = -1
 
   s3_bucket               = data.terraform_remote_state.global.outputs.lambda_sources_bucket_name
-  s3_key                  = "authorizer/signed/${var.release_version}.zip"
+  s3_key                  = "authorizer/signed/authorizer-${var.release_version}.zip"
   code_signing_config_arn = data.terraform_remote_state.global.outputs.signing_config_arn
 
   environment {

@@ -142,14 +142,14 @@ upload version="v0.0.0-dev":
       # version-named key so callers can find it without tracking job-ids.
       aws s3 mv "s3://${BUCKET_NAME}/${SIGNED_S3_KEY}" "s3://${BUCKET_NAME}/${STABLE_SIGNED_KEY}"
       echo "✅ Signed artifact: s3://${BUCKET_NAME}/${STABLE_SIGNED_KEY}"
-      echo "   Run 'just update-lambda-code {{version}}' to deploy it."
+      echo "   Run 'just update-lambda-code <env> {{version}}' to deploy it."
   else
       echo "⏭️  Skipping code signing (signing profile unavailable)"
   fi
 
 # Point the service's Lambda function at the signed package for a given version (as produced by `upload`)
 [group('build')]
-update-lambda-code version="v0.0.0-dev":
+update-lambda-code env version="v0.0.0-dev":
   #!/usr/bin/env bash
   set -eo pipefail
 
@@ -163,7 +163,7 @@ update-lambda-code version="v0.0.0-dev":
       exit 1
   fi
 
-  FUNCTION_NAME="{{lambda_function_name}}"
+  FUNCTION_NAME="cbtc-media-day-{{env}}-${SERVICE_NAME}"
 
   echo "🚀 Updating Lambda function: $FUNCTION_NAME..."
   aws lambda update-function-code \
