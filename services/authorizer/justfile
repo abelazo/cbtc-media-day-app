@@ -1,3 +1,5 @@
+lambda_function_name := "cbtc-media-day-dev-authorizer"
+
 import '../recipes.services.just'
 
 # Service-local Terraform stack

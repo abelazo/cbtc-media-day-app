@@ -89,11 +89,9 @@ upload version="v0.0.0-dev":
   S3_KEY="${SERVICE_NAME}/${RELEASE_NAME}.zip"
   SIGNED_S3_PREFIX="${SERVICE_NAME}/signed/"
 
-  # Bucket comes from env; signing profile still from global Terraform output
+  # Bucket and signing profile come from env
   BUCKET_NAME="${TF_LAMBDA_SOURCES_BUCKET:-}"
-  pushd ../../infra/global >& /dev/null
-  SIGNING_PROFILE=$(terraform output -raw signing_profile_name 2>/dev/null || echo "")
-  popd >& /dev/null
+  SIGNING_PROFILE="${TF_LAMBDA_SIGNING_PROFILE:-}"
 
   if [ -z "$BUCKET_NAME" ]; then
       echo "❌ TF_LAMBDA_SOURCES_BUCKET env var not set." >&2
@@ -102,8 +100,7 @@ upload version="v0.0.0-dev":
 
   SKIP_SIGNING=false
   if [ -z "$SIGNING_PROFILE" ]; then
-      echo "⚠️  Warning: Could not get signing profile from Terraform. Skipping signing."
-      echo "   Make sure global infrastructure is deployed first."
+      echo "⚠️  Warning: TF_LAMBDA_SIGNING_PROFILE env variable not set. Skipping signing."
       SKIP_SIGNING=true
   fi
 
@@ -166,18 +163,7 @@ update-lambda-code version="v0.0.0-dev":
       exit 1
   fi
 
-  # Resolve function name from service-local Terraform output
-  FUNCTION_NAME=""
-  if [ -d "infra" ]; then
-      pushd infra >& /dev/null
-      FUNCTION_NAME=$(terraform output -raw "${SERVICE_NAME}_function_name" 2>/dev/null || echo "")
-      popd >& /dev/null
-  fi
-
-  if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
-      echo "❌ Could not resolve Lambda function name from Terraform output. Make sure the service infra is applied." >&2
-      exit 1
-  fi
+  FUNCTION_NAME="{{lambda_function_name}}"
 
   echo "🚀 Updating Lambda function: $FUNCTION_NAME..."
   aws lambda update-function-code \

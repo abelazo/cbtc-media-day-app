@@ -44,6 +44,7 @@ jobs:
       - name: Upload lambda source
         env:
           TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
+          TF_LAMBDA_SIGNING_PROFILE: ${{ secrets.TF_LAMBDA_SIGNING_PROFILE }}
         run: |
           just build
           just upload "${{ inputs.version }}"
