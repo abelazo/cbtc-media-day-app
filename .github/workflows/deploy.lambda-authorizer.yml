@@ -151,7 +151,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx -y semantic-release@25
+          npx -y semantic-release@25 --extends ./services/authorizer/.releaserc.yaml
           NEW_TAG=$(git tag --points-at HEAD --list 'authorizer-v*' | head -n1)
           if [ -n "$NEW_TAG" ]; then
             echo "new_release_published=true" >> "$GITHUB_OUTPUT"
