@@ -1,6 +1,6 @@
 # CBTC Media Day
 
-A serverless AWS application built with Python 3.12 and Terraform, following Test-Driven Development (TDD) principles.
+A serverless AWS application to serve CBTC Media Day assets.
 
 [![Deploy - Global](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.infra-global.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.infra-global.yml)
 
