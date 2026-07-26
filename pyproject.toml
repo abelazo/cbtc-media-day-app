@@ -86,6 +86,14 @@ exclude_lines = [
     "if __name__ == .__main__.:",
 ]
 
+[tool.commitizen]
+name = "cz_customize"
+
+[tool.commitizen.customize]
+schema = "<type>(<scope>): <subject> (#<issue>)"
+example = "feat(authorizer): add DNI normalization (#12)"
+schema_pattern = '(?s)(build|bump|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(\S+\))?!?: ([^\n\r]+ \(#\d+\))((\n\n.*)|(\s*))?$'
+
 [dependency-groups]
 dev = [
     "playwright>=1.57.0",
