@@ -193,16 +193,16 @@ jobs:
       version: v${{ needs.release.outputs.new_release_version }}
     secrets: inherit
 
-  # deploy-prod:
-  #   name: Deploy λ - Authorizer (prod)
-  #   needs: [release, deploy-dev]
-  #   if: needs.release.outputs.new_release_published == 'true'
-  #   permissions:
-  #     id-token: write
-  #     contents: write
-  #   uses: ./.github/workflows/_deploy.lambda-env.yml
-  #   with:
-  #     environment: prod
-  #     service: authorizer
-  #     version: v${{ needs.release.outputs.new_release_version }}
-  #   secrets: inherit
+  deploy-prod:
+    name: Deploy λ - Authorizer (prod)
+    needs: [release, deploy-dev]
+    if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      id-token: write
+      contents: write
+    uses: ./.github/workflows/_deploy.lambda-env.yml
+    with:
+      environment: prod
+      service: authorizer
+      version: v${{ needs.release.outputs.new_release_version }}
+    secrets: inherit
