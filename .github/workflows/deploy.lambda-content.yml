@@ -125,11 +125,6 @@ jobs:
         working-directory: infra/global
         run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
 
-      # TODO: activate when confident
-      # - name: Build, sign, and upload lambda
-      #   working-directory: services/content
-      #   run: bash build.sh
-
   deploy:
     name: Deploy (${{ matrix.environment }})
     needs: [release, build]
