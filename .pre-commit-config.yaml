@@ -7,7 +7,7 @@ default_install_hook_types:
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.21
+    rev: v0.16.0
     hooks:
       # Run the linter
       - id: ruff-check
@@ -26,7 +26,7 @@ repos:
       - id: mixed-line-ending
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.16.4
+    rev: v4.16.5
     hooks:
       - id: commitizen
 
@@ -43,7 +43,7 @@ repos:
       - id: check-github-workflows
 
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.108.0
+    rev: v1.108.1
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
