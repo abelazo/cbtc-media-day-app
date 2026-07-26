@@ -3,8 +3,10 @@
 A serverless AWS application built with Python 3.12 and Terraform, following Test-Driven Development (TDD) principles.
 
 [![Deploy - Global](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.infra-global.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.infra-global.yml)
+
 [![λ - Authorizer](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.lambda-authorizer.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.lambda-authorizer.yml)
 [![λ - Content](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.lambda-content.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.lambda-content.yml)
+
 [![Deploy - API Gateway](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.infra-api.gateway.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/deploy.infra-api.gateway.yml)
 
 [![Docs](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/docs.yml/badge.svg)](https://github.com/abelazo/cbtc-media-day-app/actions/workflows/docs.yml)
