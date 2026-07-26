@@ -8,13 +8,13 @@ run-name: >-
   }}
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'services/content/**'
-      - '.github/workflows/deploy-lambda_content.yml'
-      - '.github/workflows/template_tests-*.yml'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'services/content/**'
+  #     - '.github/workflows/deploy-lambda_content.yml'
+  #     - '.github/workflows/template_tests-*.yml'
   workflow_dispatch:
 
 permissions:
