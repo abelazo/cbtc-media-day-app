@@ -8,28 +8,21 @@ run-name: >-
   }}
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'services/content/**'
-  #     - '.github/workflows/deploy.lambda-content.yml'
-  #     - '.github/workflows/template_tests-*.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/content/**'
+      - '.github/workflows/deploy.lambda-content.yml'
+      - '.github/worlflows/_deploy.lambda-env.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  unit-tests:
-    name: Unit Tests
-    uses: ./.github/workflows/template_tests-ut.yml
-    with:
-      service-name: 'content'
-
-  qa:
-    name: QA Checks (infra)
-    needs: unit-tests
+  terraform-qa:
+    name: Terraform QA
     runs-on: ubuntu-latest
 
     steps:
@@ -38,20 +31,108 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Terraform QA
+      - name: QA
         uses: ./.github/actions/terraform-qa
         with:
           working-directory: services/content/infra
 
+  code-qa:
+    name: Code QA
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          enable-cache: true
+
+      - name: Install Just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+      - name: Install dependencies
+        run: just sync content
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: |
+          log=$(mktemp)
+          echo "log=$log" >> "$GITHUB_OUTPUT"
+          just services::content::lint 2>&1 | tee "$log"
+
+      - name: Test
+        id: test
+        continue-on-error: true
+        run: |
+          log=$(mktemp)
+          echo "log=$log" >> "$GITHUB_OUTPUT"
+          just services::content::test 2>&1 | tee "$log"
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: |
+          log=$(mktemp)
+          echo "log=$log" >> "$GITHUB_OUTPUT"
+          just services::content::build 2>&1 | tee "$log"
+
+      - name: QA Summary
+        if: always()
+        run: |
+          print_result() {
+            name="$1"; outcome="$2"; log="$3"
+            if [ "$outcome" = "success" ]; then
+              echo "🟢 $name"
+            else
+              echo "🔴 $name"
+              echo
+              echo '```'
+              cat "$log" 2>/dev/null
+              echo '```'
+            fi
+            echo
+          }
+          {
+            print_result "Lint" "${{ steps.lint.outcome }}" "${STEPS_LINT_OUTPUTS_LOG}"
+            print_result "Test" "${{ steps.test.outcome }}" "${STEPS_TEST_OUTPUTS_LOG}"
+            print_result "Build" "${{ steps.build.outcome }}" "${STEPS_BUILD_OUTPUTS_LOG}"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          STEPS_LINT_OUTPUTS_LOG: ${{ steps.lint.outputs.log }}
+          STEPS_TEST_OUTPUTS_LOG: ${{ steps.test.outputs.log }}
+          STEPS_BUILD_OUTPUTS_LOG: ${{ steps.build.outputs.log }}
+
+      - name: Enforce QA result
+        if: always()
+        run: |
+          for outcome in "${{ steps.lint.outcome }}" "${{ steps.test.outcome }}" "${{ steps.build.outcome }}"; do
+            if [ "$outcome" != "success" ]; then
+              echo "One or more QA checks failed. See summary above."
+              exit 1
+            fi
+          done
+
+
   release:
     name: Semantic Release
-    needs: qa
+    needs: [terraform-qa, code-qa]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       issues: write
       pull-requests: write
+      id-token: write
     outputs:
       new_release_published: ${{ steps.release.outputs.new_release_published }}
       new_release_version: ${{ steps.release.outputs.new_release_version }}
@@ -85,117 +166,48 @@ jobs:
             echo "new_release_published=false" >> "$GITHUB_OUTPUT"
           fi
 
-  build:
-    name: Build + Sign + Upload (${{ matrix.environment }})
+      - name: Release Summary
+        if: steps.release.outputs.new_release_published == 'true'
+        run: |
+          TAG="content-v${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
+          {
+            echo "## 🚀 New Release: $TAG"
+            echo
+            echo "- **Version:** ${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
+            echo "- **Commit:** \`${{ github.sha }}\`"
+            echo "- **Release:** $(gh release view "$TAG" --json url -q .url)"
+            echo
+            echo "### Release Notes"
+            gh release view "$TAG" --json body -q .body
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION: ${{ steps.release.outputs.new_release_version }}
+
+  deploy-dev:
+    name: Deploy λ - Content (dev)
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    environment: ${{ matrix.environment }}
-    strategy:
-      max-parallel: 1
-      matrix:
-        environment: [dev, prod]
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.13.1
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Init global stack (read-only)
-        working-directory: infra/global
-        run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-  deploy:
-    name: Deploy (${{ matrix.environment }})
-    needs: [release, build]
-    if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    environment: ${{ matrix.environment }}
-    strategy:
-      max-parallel: 1
-      matrix:
-        environment: [dev, prod]
     permissions:
       id-token: write
       contents: write
-    defaults:
-      run:
-        working-directory: services/content/infra
+    uses: ./.github/workflows/_deploy.lambda-env.yml
+    with:
+      environment: dev
+      service: content
+      version: v${{ needs.release.outputs.new_release_version }}
+    secrets: inherit
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.13.1
-
-      - name: Install Just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Terraform Init
-        run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-      - name: Terraform Plan
-        run: just plan ${{ matrix.environment }} -var="release_version=content-v${NEEDS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
-        env:
-          NEEDS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION: ${{ needs.release.outputs.new_release_version }}
-
-      # TODO: activate apply + post-deploy tracking when confident
-      # - name: Terraform Apply
-      #   run: just apply ${{ matrix.environment }} --auto-approve -var="release_version=content-v${{ needs.release.outputs.new_release_version }}"
-      #
-      # - name: Move deployment tag
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     TAG="content-deployed-${{ matrix.environment }}"
-      #     git tag -f "$TAG"
-      #     git push -f origin "refs/tags/$TAG"
-      #
-      # - name: Append audit log entry
-      #   env:
-      #     AUDIT_BUCKET: ${{ secrets.AUDIT_BUCKET }}
-      #   run: |
-      #     RECORD=$(jq -nc \
-      #       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-      #       --arg stack "content" \
-      #       --arg version "content-v${{ needs.release.outputs.new_release_version }}" \
-      #       --arg env "${{ matrix.environment }}" \
-      #       --arg commit "${{ github.sha }}" \
-      #       --arg actor "${{ github.actor }}" \
-      #       '{ts: $ts, stack: $stack, version: $version, env: $env, commit: $commit, actor: $actor}')
-      #     TMP=$(mktemp)
-      #     aws s3 cp "s3://${AUDIT_BUCKET}/deployments.jsonl" "$TMP" 2>/dev/null || true
-      #     echo "$RECORD" >> "$TMP"
-      #     aws s3 cp "$TMP" "s3://${AUDIT_BUCKET}/deployments.jsonl"
+  deploy-prod:
+    name: Deploy λ - Content (prod)
+    needs: [release, deploy-dev]
+    if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      id-token: write
+      contents: write
+    uses: ./.github/workflows/_deploy.lambda-env.yml
+    with:
+      environment: prod
+      service: content
+      version: v${{ needs.release.outputs.new_release_version }}
+    secrets: inherit
