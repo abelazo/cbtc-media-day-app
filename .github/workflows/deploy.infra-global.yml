@@ -21,8 +21,8 @@ permissions:
   contents: read
 
 jobs:
-  qa:
-    name: QA Checks
+  terraform-qa:
+    name: Terraform QA
     runs-on: ubuntu-latest
 
     steps:
@@ -31,14 +31,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Terraform QA
+      - name: QA
         uses: ./.github/actions/terraform-qa
         with:
           working-directory: infra/global
 
   release:
     name: Semantic Release
-    needs: qa
+    needs: terraform-qa
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

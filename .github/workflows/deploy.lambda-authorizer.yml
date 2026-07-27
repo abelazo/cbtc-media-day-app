@@ -31,7 +31,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Terraform QA
+      - name: QA
         uses: ./.github/actions/terraform-qa
         with:
           working-directory: services/authorizer/infra
