@@ -42,6 +42,15 @@ repos:
       - id: check-github-actions
       - id: check-github-workflows
 
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.28.0
+    hooks:
+      - id: zizmor
+        args:
+          - --no-progress
+          - --fix
+          - --min-severity=high
+
   - repo: https://github.com/antonbabenko/pre-commit-terraform
     rev: v1.108.1
     hooks:
