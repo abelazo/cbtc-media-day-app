@@ -118,13 +118,9 @@ Five-stack Terraform layout. Each stack has its own `justfile` supporting `init`
 4. **content** (`services/content/infra/`) — Content Lambda function, its IAM role/policies, and CloudWatch log group. Reads `global` via `terraform_remote_state`.
 5. **api-gateway** (`infra/api-gateway/`) — REST API, `/content` resource, lambda authorizer attachment, AWS_PROXY integration, CORS, deployment, and `v1` stage. Reads `authorizer` and `content` via remote state.
 
-Recipe namespaces:
+Recipe namespaces: `just infra::<stack>::<action> <env>` for `bootstrap`/`global`/`api-gateway`; `just services::<svc>::infra::<action> <env>` for `authorizer`/`content`.
 
-- `just infra::<stack>::<action> <env>` for `bootstrap`, `global`, `api-gateway`.
-- `just services::<svc>::infra::<action> <env>` for `authorizer` and `content`.
-- `just deploy-all <env>` applies every stack in the required order: `global` → (`authorizer` ∥ `content`) → `api-gateway`.
-
-Deploy order matters: downstream stacks read upstream outputs via `terraform_remote_state`, so a fresh apply must run upstream first. Each stack also publishes a `<stack>-deployed-<env>` Git tag and appends to the audit log on successful apply.
+Deploy order matters (see above) because downstream stacks read upstream outputs via `terraform_remote_state`. Each stack also publishes a `<stack>-deployed-<env>` Git tag and appends to the audit log on successful apply.
 
 Each Terraform root has an `account_guard.tf` precondition asserting the AWS account currently authenticated matches the expected per-env account (dev `454591548336`, prod `788070448579`).
 

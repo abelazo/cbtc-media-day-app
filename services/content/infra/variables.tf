@@ -25,5 +25,5 @@ variable "app_url" {
 variable "release_version" {
   description = "Release version stamped on every resource and on the Lambda function Description. Set by CI to e.g. content-v1.4.0."
   type        = string
-  default     = "content-vunreleased"
+  default     = "content-v0.0.0-dev"
 }
