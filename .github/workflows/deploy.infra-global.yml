@@ -82,12 +82,13 @@ jobs:
         if: steps.release.outputs.new_release_published == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION: ${{ steps.release.outputs.new_release_version }}
         run: |
-          TAG="infra-global-v${{ steps.release.outputs.new_release_version }}"
+          TAG="infra-global-v${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
           {
             echo "## 🚀 New Release: $TAG"
             echo
-            echo "- **Version:** ${{ steps.release.outputs.new_release_version }}"
+            echo "- **Version:** ${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
             echo "- **Commit:** \`${{ github.sha }}\`"
             echo "- **Release:** $(gh release view "$TAG" --json url -q .url)"
             echo

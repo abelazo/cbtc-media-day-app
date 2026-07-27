@@ -48,13 +48,23 @@ jobs:
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Terraform Init
-        run: just init ${{ inputs.environment }}
+        run: just init ${INPUTS_ENVIRONMENT}
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
 
       - name: Terraform Workspace
-        run: just workspace ${{ inputs.environment }}
+        run: just workspace ${INPUTS_ENVIRONMENT}
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
 
       - name: Terraform Plan
-        run: just plan ${{ inputs.environment }} -var="release_version=${{ inputs.release_version }}"
+        run: just plan ${INPUTS_ENVIRONMENT} -var="release_version=${INPUTS_RELEASE_VERSION}"
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+          INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
 
       - name: Terraform Apply
-        run: just apply ${{ inputs.environment }} --auto-approve -var="release_version=${{ inputs.release_version }}"
+        run: just apply ${INPUTS_ENVIRONMENT} --auto-approve -var="release_version=${INPUTS_RELEASE_VERSION}"
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+          INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}

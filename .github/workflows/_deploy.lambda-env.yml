@@ -42,12 +42,13 @@ jobs:
           aws-region: eu-west-1
 
       - name: Upload λ source
+        run: |
+          just build
+          just upload "${INPUTS_VERSION}"
         env:
           TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
           TF_LAMBDA_SIGNING_PROFILE: ${{ secrets.TF_LAMBDA_SIGNING_PROFILE }}
-        run: |
-          just build
-          just upload "${{ inputs.version }}"
+          INPUTS_VERSION: ${{ inputs.version }}
 
   infra:
     name: Infra (${{ inputs.environment }})
@@ -86,16 +87,26 @@ jobs:
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Terraform Init
-        run: just init ${{ inputs.environment }}
+        run: just init ${INPUTS_ENVIRONMENT}
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
 
       - name: Terraform Workspace
-        run: just workspace ${{ inputs.environment }}
+        run: just workspace ${INPUTS_ENVIRONMENT}
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
 
       - name: Terraform Plan
-        run: just plan ${{ inputs.environment }} -var="release_version=${{ inputs.version }}"
+        run: just plan ${INPUTS_ENVIRONMENT} -var="release_version=${INPUTS_VERSION}"
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+          INPUTS_VERSION: ${{ inputs.version }}
 
       - name: Terraform Apply
-        run: just apply ${{ inputs.environment }} --auto-approve -var="release_version=${{ inputs.version }}"
+        run: just apply ${INPUTS_ENVIRONMENT} --auto-approve -var="release_version=${INPUTS_VERSION}"
+        env:
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+          INPUTS_VERSION: ${{ inputs.version }}
 
   update-code:
     name: Update λ Code (${{ inputs.environment }})
@@ -125,6 +136,8 @@ jobs:
           aws-region: eu-west-1
 
       - name: Update λ code
+        run: just update-lambda-code "${INPUTS_ENVIRONMENT}" "${INPUTS_VERSION}"
         env:
           TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
-        run: just update-lambda-code "${{ inputs.environment }}" "${{ inputs.version }}"
+          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+          INPUTS_VERSION: ${{ inputs.version }}

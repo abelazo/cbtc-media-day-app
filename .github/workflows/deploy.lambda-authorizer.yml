@@ -103,10 +103,14 @@ jobs:
             echo
           }
           {
-            print_result "Lint" "${{ steps.lint.outcome }}" "${{ steps.lint.outputs.log }}"
-            print_result "Test" "${{ steps.test.outcome }}" "${{ steps.test.outputs.log }}"
-            print_result "Build" "${{ steps.build.outcome }}" "${{ steps.build.outputs.log }}"
+            print_result "Lint" "${{ steps.lint.outcome }}" "${STEPS_LINT_OUTPUTS_LOG}"
+            print_result "Test" "${{ steps.test.outcome }}" "${STEPS_TEST_OUTPUTS_LOG}"
+            print_result "Build" "${{ steps.build.outcome }}" "${STEPS_BUILD_OUTPUTS_LOG}"
           } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          STEPS_LINT_OUTPUTS_LOG: ${{ steps.lint.outputs.log }}
+          STEPS_TEST_OUTPUTS_LOG: ${{ steps.test.outputs.log }}
+          STEPS_BUILD_OUTPUTS_LOG: ${{ steps.build.outputs.log }}
 
       - name: Enforce QA result
         if: always()
@@ -164,20 +168,21 @@ jobs:
 
       - name: Release Summary
         if: steps.release.outputs.new_release_published == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="authorizer-v${{ steps.release.outputs.new_release_version }}"
+          TAG="authorizer-v${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
           {
             echo "## 🚀 New Release: $TAG"
             echo
-            echo "- **Version:** ${{ steps.release.outputs.new_release_version }}"
+            echo "- **Version:** ${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
             echo "- **Commit:** \`${{ github.sha }}\`"
             echo "- **Release:** $(gh release view "$TAG" --json url -q .url)"
             echo
             echo "### Release Notes"
             gh release view "$TAG" --json body -q .body
           } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION: ${{ steps.release.outputs.new_release_version }}
 
   deploy-dev:
     name: Deploy λ - Authorizer (dev)

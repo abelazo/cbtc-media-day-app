@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -32,7 +34,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          just sync ${{ inputs.service-name }}
+          just sync ${INPUTS_SERVICE_NAME}
+        env:
+          INPUTS_SERVICE_NAME: ${{ inputs.service-name }}
 
       - name: Run Services Unit Tests
         working-directory: "services/${{ inputs.service-name }}"

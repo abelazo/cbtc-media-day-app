@@ -167,7 +167,9 @@ jobs:
         run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
 
       - name: Terraform Plan
-        run: just plan ${{ matrix.environment }} -var="release_version=content-v${{ needs.release.outputs.new_release_version }}"
+        run: just plan ${{ matrix.environment }} -var="release_version=content-v${NEEDS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
+        env:
+          NEEDS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION: ${{ needs.release.outputs.new_release_version }}
 
       # TODO: activate apply + post-deploy tracking when confident
       # - name: Terraform Apply
