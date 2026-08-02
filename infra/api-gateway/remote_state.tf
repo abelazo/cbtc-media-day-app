@@ -5,7 +5,7 @@ data "terraform_remote_state" "authorizer" {
 
   config = {
     bucket = "cbtc-terraform-state-${var.environment}-${data.aws_caller_identity.current.account_id}"
-    key    = "lambda.authorizer.tfstate"
+    key    = "env:/${var.environment}/lambda.authorizer.tfstate"
     region = var.aws_region
   }
 }
@@ -15,7 +15,7 @@ data "terraform_remote_state" "content" {
 
   config = {
     bucket = "cbtc-terraform-state-${var.environment}-${data.aws_caller_identity.current.account_id}"
-    key    = "lambda.content.tfstate"
+    key    = "env:/${var.environment}/lambda.content.tfstate"
     region = var.aws_region
   }
 }

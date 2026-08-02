@@ -1,5 +1,3 @@
-# Infrastructure management recipes
-
 # Bootstrap stack
 [group('stacks')]
 mod bootstrap
@@ -10,7 +8,7 @@ mod global
 
 # API Gateway stack (REST API + integrations to lambdas)
 [group('stacks')]
-mod api-gateway
+mod api-gw 'api-gateway'
 
 # Default recipe - show available commands
 help:
