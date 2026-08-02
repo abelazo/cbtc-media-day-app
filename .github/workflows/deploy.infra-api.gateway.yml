@@ -8,20 +8,21 @@ run-name: >-
   }}
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'infra/api-gateway/**'
-  #     - '.github/workflows/deploy-infra_api-gateway.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/api-gateway/**'
+      - '.github/workflows/deploy.infra-api.gateway.yml'
+      - '.github/workflows/_deploy.infra-env.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  qa:
-    name: QA Checks
+  terraform-qa:
+    name: Terraform QA
     runs-on: ubuntu-latest
 
     steps:
@@ -30,14 +31,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Terraform QA
+      - name: QA
         uses: ./.github/actions/terraform-qa
         with:
           working-directory: infra/api-gateway
 
   release:
     name: Semantic Release
-    needs: qa
+    needs: terraform-qa
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -77,77 +78,52 @@ jobs:
             echo "new_release_published=false" >> "$GITHUB_OUTPUT"
           fi
 
-  deploy:
-    name: Deploy (${{ matrix.environment }})
+      - name: Release Summary
+        if: steps.release.outputs.new_release_published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION: ${{ steps.release.outputs.new_release_version }}
+        run: |
+          TAG="api-gateway-v${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
+          {
+            echo "## 🚀 New Release: $TAG"
+            echo
+            echo "- **Version:** ${STEPS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
+            echo "- **Commit:** \`${{ github.sha }}\`"
+            echo "- **Release:** $(gh release view "$TAG" --json url -q .url)"
+            echo
+            echo "### Release Notes"
+            gh release view "$TAG" --json body -q .body
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-dev:
+    name: Deploy (dev)
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    environment: ${{ matrix.environment }}
-    strategy:
-      max-parallel: 1
-      matrix:
-        environment: [dev, prod]
     permissions:
       id-token: write
       contents: write
-    defaults:
-      run:
-        working-directory: infra/api-gateway
+    uses: ./.github/workflows/_deploy.infra-env.yml
+    with:
+      environment: dev
+      release_version: api-gateway-v${{ needs.release.outputs.new_release_version }}
+      working-directory: infra/api-gateway
+    secrets:
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.13.1
-
-      - name: Install Just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Terraform Init
-        run: terraform init --backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" --backend-config="region=eu-west-1"
-
-      - name: Terraform Plan
-        run: just plan ${{ matrix.environment }} -var="release_version=api-gateway-v${NEEDS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION}"
-        env:
-          NEEDS_RELEASE_OUTPUTS_NEW_RELEASE_VERSION: ${{ needs.release.outputs.new_release_version }}
-
-      # TODO: activate apply + post-deploy tracking when confident
-      # - name: Terraform Apply
-      #   run: just apply ${{ matrix.environment }} --auto-approve -var="release_version=api-gateway-v${{ needs.release.outputs.new_release_version }}"
-      #
-      # - name: Move deployment tag
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     TAG="api-gateway-deployed-${{ matrix.environment }}"
-      #     git tag -f "$TAG"
-      #     git push -f origin "refs/tags/$TAG"
-      #
-      # - name: Append audit log entry
-      #   env:
-      #     AUDIT_BUCKET: ${{ secrets.AUDIT_BUCKET }}
-      #   run: |
-      #     RECORD=$(jq -nc \
-      #       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-      #       --arg stack "api-gateway" \
-      #       --arg version "api-gateway-v${{ needs.release.outputs.new_release_version }}" \
-      #       --arg env "${{ matrix.environment }}" \
-      #       --arg commit "${{ github.sha }}" \
-      #       --arg actor "${{ github.actor }}" \
-      #       '{ts: $ts, stack: $stack, version: $version, env: $env, commit: $commit, actor: $actor}')
-      #     TMP=$(mktemp)
-      #     aws s3 cp "s3://${AUDIT_BUCKET}/deployments.jsonl" "$TMP" 2>/dev/null || true
-      #     echo "$RECORD" >> "$TMP"
-      #     aws s3 cp "$TMP" "s3://${AUDIT_BUCKET}/deployments.jsonl"
+  deploy-prod:
+    name: Deploy (prod)
+    needs: [release, deploy-dev]
+    if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      id-token: write
+      contents: write
+    uses: ./.github/workflows/_deploy.infra-env.yml
+    with:
+      environment: prod
+      release_version: api-gateway-v${{ needs.release.outputs.new_release_version }}
+      working-directory: infra/api-gateway
+    secrets:
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

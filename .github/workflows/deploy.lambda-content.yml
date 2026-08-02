@@ -196,7 +196,11 @@ jobs:
       environment: dev
       service: content
       version: v${{ needs.release.outputs.new_release_version }}
-    secrets: inherit
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
+      TF_LAMBDA_SIGNING_PROFILE: ${{ secrets.TF_LAMBDA_SIGNING_PROFILE }}
 
   deploy-prod:
     name: Deploy λ - Content (prod)
@@ -210,4 +214,8 @@ jobs:
       environment: prod
       service: content
       version: v${{ needs.release.outputs.new_release_version }}
-    secrets: inherit
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
+      TF_LAMBDA_SIGNING_PROFILE: ${{ secrets.TF_LAMBDA_SIGNING_PROFILE }}

@@ -187,6 +187,8 @@ uses: owner/action@<full-commit-sha> # vX.Y.Z
 
 Example: `uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0`
 
+**Zizmor**: any time a workflow file (`.github/workflows/**`) is added or modified, run `zizmor .github/workflows/<file>` and address every finding it reports before considering the change done.
+
 To get the SHA for a tag:
 
 ```bash

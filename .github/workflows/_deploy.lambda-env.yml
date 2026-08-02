@@ -13,6 +13,15 @@ on:
       version:
         required: true
         type: string
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+      TF_STATE_BUCKET:
+        required: true
+      TF_LAMBDA_SOURCES_BUCKET:
+        required: true
+      TF_LAMBDA_SIGNING_PROFILE:
+        required: true
 
 jobs:
   upload:

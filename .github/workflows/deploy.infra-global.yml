@@ -107,7 +107,10 @@ jobs:
     with:
       environment: dev
       release_version: infra-global-v${{ needs.release.outputs.new_release_version }}
-    secrets: inherit
+      working-directory: infra/global
+    secrets:
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
 
   deploy-prod:
     name: Deploy (prod)
@@ -120,4 +123,7 @@ jobs:
     with:
       environment: prod
       release_version: infra-global-v${{ needs.release.outputs.new_release_version }}
-    secrets: inherit
+      working-directory: infra/global
+    secrets:
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

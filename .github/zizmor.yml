@@ -1,3 +1,12 @@
 rules:
   unpinned-uses:
-    disable: true
+    config:
+      policies:
+        "actions/*": ref-pin
+        "astral-sh/setup-uv": ref-pin
+        "aws-actions/*": ref-pin
+        "hashicorp/*": ref-pin
+        "*": hash-pin
+
+  cache-poisoning:
+    disable: false

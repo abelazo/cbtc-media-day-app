@@ -10,6 +10,14 @@ on:
       release_version:
         required: true
         type: string
+      working-directory:
+        required: true
+        type: string
+    secrets:
+      TF_STATE_BUCKET:
+        required: true
+      AWS_ROLE_ARN:
+        required: true
 
 jobs:
   deploy:
@@ -21,7 +29,7 @@ jobs:
       contents: write
     defaults:
       run:
-        working-directory: infra/global
+        working-directory: ${{ inputs.working-directory }}
     env:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
