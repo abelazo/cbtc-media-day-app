@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { FEEDBACK_URL } from "../links";
+import { useI18n } from "../i18n/I18nContext";
 
 export default function DocumentIdForm() {
   const [documentId, setDocumentId] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState(null);
+  const { t, tRich } = useI18n();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage({ type: "info", text: "Procesando..." });
+    setMessage({ type: "info", key: "msg.processing" });
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "";
@@ -35,29 +37,17 @@ export default function DocumentIdForm() {
         link.click();
         document.body.removeChild(link);
 
-        setMessage({ type: "success", text: "✅ ¡Descarga completada! Revisa tu carpeta de descargas." });
+        setMessage({ type: "success", key: "msg.success" });
       } else if (response.status === 404) {
-        setMessage({
-          type: "error",
-          text: "❌ Error (" + response.status + ") : No hay fotos asociadas a este jugador",
-        });
+        setMessage({ type: "error", key: "error.notFound", vars: { status: response.status } });
       } else if (response.status === 401 || response.status === 403) {
-        setMessage({
-          type: "error",
-          text: "❌ No se puede verificar que exista relación entre el número de documento y el nombre de jugador/a proporcionados",
-        });
+        setMessage({ type: "error", key: "error.unauthorized" });
       } else {
-        setMessage({
-          type: "error",
-          text: "❌ Ha ocurrido un error inesperado (" + response.status + "). Inténtalo de nuevo más tarde.",
-        });
+        setMessage({ type: "error", key: "error.unexpected", vars: { status: response.status } });
       }
     } catch (error) {
       console.error(error);
-      setMessage({
-        type: "error",
-        text: "❌ No se puede verificar que exista relación entre el número de documento y el nombre de jugador/a proporcionados",
-      });
+      setMessage({ type: "error", key: "error.unauthorized" });
     }
   };
 
@@ -74,44 +64,47 @@ export default function DocumentIdForm() {
           borderLeft: "3px solid rgba(255, 255, 255, 0.5)",
         }}
       >
-        Datos según lo registrado en{" "}
-        <a
-          href="https://cbtrescantos.es"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: "inherit", fontWeight: "bold" }}
-        >
-          https://cbtrescantos.es
-        </a>
+        {tRich("form.note", {
+          link: (
+            <a
+              href="https://cbtrescantos.es"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "inherit", fontWeight: "bold" }}
+            >
+              https://cbtrescantos.es
+            </a>
+          ),
+        })}
       </p>
       <div style={{ marginBottom: "1rem" }}>
         <label htmlFor="name" style={{ display: "block", marginBottom: "0.5rem" }}>
-          Nombre completo y apellidos del jugador/a
+          {t("form.name.label")}
         </label>
         <input
           id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ej: Juan Pérez García"
+          placeholder={t("form.name.placeholder")}
           style={{ padding: "0.5rem", width: "100%" }}
         />
       </div>
       <div style={{ marginBottom: "1rem" }}>
         <label htmlFor="documentId" style={{ display: "block", marginBottom: "0.5rem" }}>
-          DNI, NIE o Pasaporte del jugador o tutores asociados
+          {t("form.doc.label")}
         </label>
         <input
           id="documentId"
           type="text"
           value={documentId}
           onChange={(e) => setDocumentId(e.target.value)}
-          placeholder="Ej: 03378357W, Y9777800P, DSA136567J"
+          placeholder={t("form.doc.placeholder")}
           style={{ padding: "0.5rem", width: "100%" }}
         />
       </div>
       <button type="submit" disabled={!name.trim() || !documentId.trim()} style={{ padding: "0.5rem 1rem" }}>
-        Enviar
+        {t("form.submit")}
       </button>
       {message && (
         <div
@@ -120,17 +113,25 @@ export default function DocumentIdForm() {
             color: message.type === "error" ? "red" : message.type === "success" ? "green" : "inherit",
           }}
         >
-          {message.text}
+          {t(message.key, message.vars)}
         </div>
       )}
       {message?.type === "success" && (
         <div style={{ marginTop: "1rem", fontSize: "0.9em" }}>
           <p>
-            ¿Qué te ha parecido? Puedes darme <strong>feedback</strong> en este{" "}
-            <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", fontWeight: "bold" }}>
-              formulario
-            </a>{" "}
-            (2 minutos).
+            {tRich("feedback.text", {
+              feedback: <strong>{t("feedback.word")}</strong>,
+              link: (
+                <a
+                  href={FEEDBACK_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "inherit", fontWeight: "bold" }}
+                >
+                  {t("feedback.link")}
+                </a>
+              ),
+            })}
           </p>
         </div>
       )}

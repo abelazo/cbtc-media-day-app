@@ -1,0 +1,18 @@
+export default {
+  "lang.group": "Language",
+  "footer.photos": "Photos:",
+  "form.note": "Details as registered at {link}",
+  "form.name.label": "Player's full name and surnames",
+  "form.name.placeholder": "E.g.: Juan Pérez García",
+  "form.doc.label": "DNI, NIE or Passport of the player or their guardians",
+  "form.doc.placeholder": "E.g.: 03378357W, Y9777800P, DSA136567J",
+  "form.submit": "Submit",
+  "msg.processing": "Processing...",
+  "msg.success": "✅ Download complete! Check your downloads folder.",
+  "error.notFound": "❌ Error ({status}): No photos found for this player",
+  "error.unauthorized": "❌ We couldn't match the document number with the player name provided",
+  "error.unexpected": "❌ An unexpected error occurred ({status}). Please try again later.",
+  "feedback.text": "What did you think? You can give me {feedback} via this {link} (in Spanish).",
+  "feedback.word": "feedback",
+  "feedback.link": "form",
+};

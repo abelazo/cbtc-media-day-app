@@ -2,6 +2,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DocumentIdForm from './DocumentIdForm';
 import { describe, test, expect, vi } from 'bun:test';
+import LanguageProvider from '../i18n/LanguageProvider';
 
 // Intercepts only the first <a> created (the download link) so React-rendered anchors stay real.
 function mockDownloadAnchor() {
@@ -113,7 +114,7 @@ describe('DocumentIdForm', () => {
         expect(feedbackLink.getAttribute('href')).toBe('https://tally.so/r/Kpeyzz');
         expect(feedbackLink.getAttribute('target')).toBe('_blank');
         expect(feedbackLink.parentElement.textContent).toBe(
-            '¿Qué te ha parecido? Puedes darme feedback en este formulario (2 minutos).'
+            '¿Qué te ha parecido? Puedes darme feedback en este formulario (en español).'
         );
         expect(screen.queryByText(/¿Te gustan\?/)).toBeNull();
     });
@@ -180,5 +181,72 @@ describe('DocumentIdForm', () => {
             expect(screen.getByText(/Ha ocurrido un error inesperado/i)).toBeTruthy();
         });
         expect(screen.queryByText(/:\s*$/)).toBeNull();
+    });
+});
+
+describe('DocumentIdForm translations', () => {
+    const cases = {
+        en: {
+            name: /Player's full name/i,
+            submit: /Submit/i,
+            notFound: /No photos found for this player/,
+            unauthorized: /couldn't match the document number/,
+            unexpected: /An unexpected error occurred \(500\)/,
+            feedback: /^form$/,
+        },
+        fr: {
+            name: /Nom et prénom complets/i,
+            submit: /Envoyer/i,
+            notFound: /aucune photo associée/,
+            unauthorized: /Impossible de vérifier la correspondance/,
+            unexpected: /Une erreur inattendue s'est produite \(500\)/,
+            feedback: /^formulaire$/,
+        },
+    };
+
+    function submitIn(lang) {
+        render(<LanguageProvider initialLang={lang}><DocumentIdForm /></LanguageProvider>);
+        fireEvent.change(screen.getByLabelText(/DNI, NIE/i), { target: { value: '123' } });
+        fireEvent.change(screen.getByLabelText(cases[lang].name), { target: { value: 'User' } });
+        fireEvent.click(screen.getByRole('button', { name: cases[lang].submit }));
+    }
+
+    test.each(['es', 'en', 'fr'])('%s: document field has no explanatory hint', (lang) => {
+        render(<LanguageProvider initialLang={lang}><DocumentIdForm /></LanguageProvider>);
+        expect(screen.getByLabelText(/DNI, NIE/i).hasAttribute('aria-describedby')).toBe(false);
+    });
+
+    test.each([
+        ['en', 404, 'notFound'],
+        ['fr', 404, 'notFound'],
+        ['en', 401, 'unauthorized'],
+        ['fr', 403, 'unauthorized'],
+        ['en', 500, 'unexpected'],
+        ['fr', 500, 'unexpected'],
+    ])('%s: status %i shows translated %s message', async (lang, status, kind) => {
+        global.fetch = vi.fn().mockResolvedValue({ ok: false, status, statusText: '' });
+        submitIn(lang);
+        expect(await screen.findByText(cases[lang][kind])).toBeTruthy();
+    });
+
+    test.each(['en', 'fr'])('%s: network failure shows translated unauthorized message', async (lang) => {
+        global.fetch = vi.fn().mockRejectedValue(new Error('network'));
+        const consoleError = console.error;
+        console.error = () => {};
+        submitIn(lang);
+        expect(await screen.findByText(cases[lang].unauthorized)).toBeTruthy();
+        console.error = consoleError;
+    });
+
+    test.each(['en', 'fr'])('%s: shows translated feedback link after success', async (lang) => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ download_url: 'https://example.com/file.zip' }),
+        });
+        const { restore } = mockDownloadAnchor();
+        submitIn(lang);
+        const link = await screen.findByRole('link', { name: cases[lang].feedback });
+        restore();
+        expect(link.getAttribute('href')).toBe('https://tally.so/r/Kpeyzz');
     });
 });
