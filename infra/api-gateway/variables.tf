@@ -21,3 +21,15 @@ variable "release_version" {
   type        = string
   default     = "api-gateway-vunreleased"
 }
+
+variable "throttling_rate_limit" {
+  description = "Steady-state requests per second allowed on the stage, shared by all clients. Excess requests get HTTP 429."
+  type        = number
+  default     = 10
+}
+
+variable "throttling_burst_limit" {
+  description = "Maximum requests accepted at once on the stage (token bucket size) before the rate limit applies."
+  type        = number
+  default     = 50
+}

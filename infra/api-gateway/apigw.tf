@@ -103,6 +103,8 @@ resource "aws_api_gateway_deployment" "v1" {
       aws_api_gateway_authorizer.lambda_authorizer.id,
       aws_api_gateway_method.content_options.id,
       aws_api_gateway_integration.content_options.id,
+      aws_api_gateway_integration_response.content_options_200.response_parameters,
+      { for k, r in aws_api_gateway_gateway_response.cors : k => r.response_parameters },
       data.terraform_remote_state.authorizer.outputs.authorizer_invoke_arn,
       data.terraform_remote_state.content.outputs.content_invoke_arn,
     ]))
@@ -131,5 +133,19 @@ resource "aws_api_gateway_stage" "v1" {
 
   tags = {
     Name = "${var.project_name}-${var.environment}-v1"
+  }
+}
+
+resource "aws_api_gateway_method_settings" "all" {
+  #checkov:skip=CKV_AWS_225:Not activating caching for cost reasons
+  #checkov:skip=CKV_AWS_308:No caching enabled, nothing to encrypt
+
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  stage_name  = aws_api_gateway_stage.v1.stage_name
+  method_path = "*/*"
+
+  settings {
+    throttling_rate_limit  = var.throttling_rate_limit
+    throttling_burst_limit = var.throttling_burst_limit
   }
 }
