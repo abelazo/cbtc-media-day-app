@@ -111,7 +111,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     try:
         # Decode base64 authorization header
         decoded_auth = base64.b64decode(auth_header).decode("utf-8")
-        logger.info(f"Decoded authorization: {decoded_auth}")
 
         # Parse DNI:Name format
         if ":" not in decoded_auth:
@@ -131,18 +130,18 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         user = get_user_from_dynamodb(name)
 
         if not user:
-            logger.warning(f"User not found: {name}")
+            logger.warning("User not found")
             return generate_policy(name, "Deny", method_arn)
 
         # Validate DNI is in user's dnis list
         user_dnis = user.get("dnis", [])
 
         if dni not in user_dnis:
-            logger.warning(f"DNI {dni} not authorized for user {name}")
+            logger.warning("DNI not authorized for user")
             return generate_policy(name, "Deny", method_arn)
 
         # Authorization successful
-        logger.info(f"Authorization successful for user {name} with DNI {dni}")
+        logger.info("Authorization successful")
         return generate_policy(
             name,
             "Allow",
@@ -151,8 +150,8 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         )
 
     except (base64.binascii.Error, UnicodeDecodeError) as e:
-        logger.error(f"Invalid base64 encoding: {e}")
+        logger.error(f"Invalid credential encoding: {type(e).__name__}")
         return generate_policy("unknown", "Deny", method_arn)
     except Exception as e:
-        logger.error(f"Unexpected error during authorization: {e}")
+        logger.error(f"Unexpected error during authorization: {type(e).__name__}")
         return generate_policy("unknown", "Deny", method_arn)

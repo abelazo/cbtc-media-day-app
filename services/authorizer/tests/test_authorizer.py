@@ -3,7 +3,10 @@ Unit tests for Lambda authorizer.
 """
 
 import base64
+import logging
 from unittest.mock import patch
+
+import pytest
 
 from services.authorizer.src.handler import lambda_handler
 
@@ -173,3 +176,43 @@ class TestAuthorizerHandler:
         assert "context" in response
         assert response["context"]["username"] == "JohnDoe"
         assert response["context"]["dni"] == "12345678A"
+
+
+METHOD_ARN = "arn:aws:execute-api:us-east-1:123456789012:abcdef123/test/GET/resource"
+
+
+def _encode(value: str) -> str:
+    return base64.b64encode(value.encode()).decode()
+
+
+class TestAuthorizerDoesNotLogPersonalData:
+    """US-005: DNI, name and raw credentials must never be written to the logs."""
+
+    @pytest.mark.parametrize(
+        ("credentials", "stored_user"),
+        [
+            pytest.param("12345678A:JohnDoe", {"username": "JohnDoe", "dnis": ["12345678A"]}, id="allow"),
+            pytest.param("99999999Z:JohnDoe", {"username": "JohnDoe", "dnis": ["12345678A"]}, id="wrong-dni"),
+            pytest.param("12345678A:JohnDoe", None, id="unknown-user"),
+            pytest.param("12345678AJohnDoe", None, id="missing-colon"),
+        ],
+    )
+    @patch("services.authorizer.src.handler.get_user_from_dynamodb")
+    def test_credentials_not_logged(self, mock_get_user, caplog, credentials, stored_user):
+        caplog.set_level(logging.DEBUG)
+        mock_get_user.return_value = stored_user
+        encoded = _encode(credentials)
+
+        lambda_handler({"methodArn": METHOD_ARN, "authorizationToken": f"Basic {encoded}"}, {})
+
+        for secret in ("12345678A", "99999999Z", "JohnDoe", credentials, encoded):
+            assert secret not in caplog.text
+
+    def test_invalid_utf8_credentials_not_logged(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        encoded = base64.b64encode(b"\xff12345678A:JohnDoe").decode()
+
+        lambda_handler({"methodArn": METHOD_ARN, "authorizationToken": f"Basic {encoded}"}, {})
+
+        for secret in ("12345678A", "JohnDoe", encoded):
+            assert secret not in caplog.text

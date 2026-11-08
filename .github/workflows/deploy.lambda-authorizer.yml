@@ -14,7 +14,7 @@ on:
     paths:
       - 'services/authorizer/**'
       - '.github/workflows/deploy.lambda-authorizer.yml'
-      - '.github/worlflows/_deploy.lambda-env.yml'
+      - '.github/workflows/_deploy.lambda-env.yml'
   workflow_dispatch:
 
 permissions:
