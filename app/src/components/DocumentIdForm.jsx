@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { FEEDBACK_URL } from "../links";
 
 export default function DocumentIdForm() {
   const [documentId, setDocumentId] = useState("");
@@ -40,8 +41,16 @@ export default function DocumentIdForm() {
           type: "error",
           text: "❌ Error (" + response.status + ") : No hay fotos asociadas a este jugador",
         });
+      } else if (response.status === 401 || response.status === 403) {
+        setMessage({
+          type: "error",
+          text: "❌ No se puede verificar que exista relación entre el número de documento y el nombre de jugador/a proporcionados",
+        });
       } else {
-        setMessage({ type: "error", text: "❌ Error (" + response.status + ") : " + response.statusText });
+        setMessage({
+          type: "error",
+          text: "❌ Ha ocurrido un error inesperado (" + response.status + "). Inténtalo de nuevo más tarde.",
+        });
       }
     } catch (error) {
       console.error(error);
@@ -112,6 +121,17 @@ export default function DocumentIdForm() {
           }}
         >
           {message.text}
+        </div>
+      )}
+      {message?.type === "success" && (
+        <div style={{ marginTop: "1rem", fontSize: "0.9em" }}>
+          <p>
+            ¿Qué te ha parecido? Puedes darme <strong>feedback</strong> en este{" "}
+            <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", fontWeight: "bold" }}>
+              formulario
+            </a>{" "}
+            (2 minutos).
+          </p>
         </div>
       )}
     </form>
