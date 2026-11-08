@@ -181,5 +181,5 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return {
             "statusCode": 500,
             "headers": headers,
-            "body": "",
+            "body": json.dumps({"message": "Internal server error", "success": False}),
         }

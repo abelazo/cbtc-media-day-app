@@ -19,7 +19,6 @@ variable "project_name" {
 variable "app_url" {
   description = "Origin of the frontend allowed by CORS. Set via TF_VAR_app_url (APP_URL secret in CI, .env locally)."
   type        = string
-  sensitive   = true
 
   validation {
     condition     = can(regex("^https?://[^/]+$", var.app_url))

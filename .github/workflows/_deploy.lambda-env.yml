@@ -13,6 +13,10 @@ on:
       version:
         required: true
         type: string
+      require_app_url:
+        required: false
+        type: boolean
+        default: false
     secrets:
       AWS_ROLE_ARN:
         required: true
@@ -38,6 +42,18 @@ jobs:
         working-directory: services/${{ inputs.service }}
 
     steps:
+      - name: Check APP_URL secret
+        if: inputs.require_app_url
+        run: |
+          if [ -z "${APP_URL}" ]; then
+            echo "::error::APP_URL secret is required for ${INPUTS_SERVICE} but is empty"
+            exit 1
+          fi
+        working-directory: .
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          INPUTS_SERVICE: ${{ inputs.service }}
+
       - name: Checkout code
         uses: actions/checkout@v7
         with:

@@ -188,8 +188,10 @@ class TestContentServiceHandler:
         response = lambda_handler(event, {})
 
         assert response["statusCode"] == 500
+        body = json.loads(response["body"])
+        assert body == {"message": "Internal server error", "success": False}
         # No error details are returned to the client
-        assert response["body"] == ""
+        assert "DynamoError" not in response["body"]
 
     @patch("boto3.resource")
     @patch("boto3.client")

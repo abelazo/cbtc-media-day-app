@@ -195,6 +195,7 @@ jobs:
     with:
       environment: dev
       service: content
+      require_app_url: true
       version: v${{ needs.release.outputs.new_release_version }}
     secrets:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
@@ -214,6 +215,7 @@ jobs:
     with:
       environment: prod
       service: content
+      require_app_url: true
       version: v${{ needs.release.outputs.new_release_version }}
     secrets:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
