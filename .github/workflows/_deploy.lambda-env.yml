@@ -22,6 +22,8 @@ on:
         required: true
       TF_LAMBDA_SIGNING_PROFILE:
         required: true
+      APP_URL:
+        required: false
 
 jobs:
   upload:
@@ -73,6 +75,7 @@ jobs:
     env:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      TF_VAR_app_url: ${{ secrets.APP_URL }}
 
     steps:
       - name: Checkout code

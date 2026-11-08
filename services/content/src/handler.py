@@ -56,7 +56,8 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     Expects 'Authorization' header with base64 encoded "DNI:Name".
     Returns a presigned URL to download a zip file containing the user's photos.
     """
-    logger.info(f"Received event: {json.dumps(event)}")
+    request_id = event.get("requestContext", {}).get("requestId", "unknown")
+    logger.info(f"Processing request {request_id}")
 
     # CORS headers
     app_url = _get_env_var("CBTC_APP_URL")
@@ -66,7 +67,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     }
 
     try:
-        logger.error("Parsing Authorization header")
+        logger.debug("Parsing Authorization header")
         auth_header = event.get("headers", {}).get("Authorization")
         if not auth_header:
             return {
@@ -76,7 +77,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             }
 
         try:
-            logger.error("Decoding Authorization header")
+            logger.debug("Decoding Authorization header")
             if auth_header.startswith("Basic "):
                 encoded_auth = auth_header.split(" ")[1]
             else:
@@ -96,7 +97,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         dynamodb = boto3.resource("dynamodb")
         table = dynamodb.Table(table_name)
 
-        logger.error("Verifying user exists and contains photos")
+        logger.debug("Verifying user exists and contains photos")
         response = table.get_item(Key={"username": name})
         item = response.get("Item")
 
@@ -116,7 +117,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Check if ZIP already exists (cache)
         if _zip_exists(s3_client, bucket_name, zip_key):
-            logger.info(f"ZIP already exists at {zip_key}, returning cached presigned URL")
+            logger.info("ZIP already exists, returning cached presigned URL")
             presigned_url = _generate_presigned_url(s3_client, bucket_name, zip_key, zip_filename)
             return {
                 "statusCode": 200,
@@ -131,20 +132,18 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for s3_key in s3_keys:
                 try:
-                    logger.info(f"Retrieving photo: {s3_key}")
                     s3_response = s3_client.get_object(Bucket=bucket_name, Key=s3_key)
                     photo_content = s3_response["Body"].read()
 
                     filename = s3_key.split("/")[-1]
                     zip_file.writestr(filename, photo_content)
                     successful_photos += 1
-                    logger.info(f"Successfully added photo: {filename}")
 
                 except s3_client.exceptions.NoSuchKey:
-                    logger.warning(f"Photo not found in S3, skipping: {s3_key}")
+                    logger.warning("Photo not found in S3, skipping")
                     continue
                 except Exception as e:
-                    logger.error(f"Error retrieving photo {s3_key}: {str(e)}, skipping")
+                    logger.error(f"Error retrieving photo: {type(e).__name__}, skipping")
                     continue
 
         if successful_photos == 0:
@@ -159,7 +158,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Upload ZIP to S3
         zip_buffer.seek(0)
-        logger.info(f"Uploading ZIP to s3://{bucket_name}/{zip_key}")
+        logger.info("Uploading ZIP")
         s3_client.put_object(
             Bucket=bucket_name,
             Key=zip_key,
@@ -178,9 +177,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
+        logger.error(f"Error processing request: {type(e).__name__}")
         return {
             "statusCode": 500,
             "headers": headers,
-            "body": json.dumps({"message": "Internal server error", "success": False, "error": str(e)}),
+            "body": "",
         }

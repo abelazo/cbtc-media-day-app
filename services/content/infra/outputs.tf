@@ -12,3 +12,9 @@ output "content_function_name" {
   description = "Name of the content Lambda function"
   value       = aws_lambda_function.content_service.function_name
 }
+
+output "app_url" {
+  description = "Origin of the frontend allowed by CORS"
+  value       = var.app_url
+  sensitive   = true
+}

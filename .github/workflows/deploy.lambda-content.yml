@@ -14,7 +14,7 @@ on:
     paths:
       - 'services/content/**'
       - '.github/workflows/deploy.lambda-content.yml'
-      - '.github/worlflows/_deploy.lambda-env.yml'
+      - '.github/workflows/_deploy.lambda-env.yml'
   workflow_dispatch:
 
 permissions:
@@ -201,6 +201,7 @@ jobs:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
       TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
       TF_LAMBDA_SIGNING_PROFILE: ${{ secrets.TF_LAMBDA_SIGNING_PROFILE }}
+      APP_URL: ${{ secrets.APP_URL }}
 
   deploy-prod:
     name: Deploy λ - Content (prod)
@@ -219,3 +220,4 @@ jobs:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
       TF_LAMBDA_SOURCES_BUCKET: ${{ secrets.TF_LAMBDA_SOURCES_BUCKET }}
       TF_LAMBDA_SIGNING_PROFILE: ${{ secrets.TF_LAMBDA_SIGNING_PROFILE }}
+      APP_URL: ${{ secrets.APP_URL }}

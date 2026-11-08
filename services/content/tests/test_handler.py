@@ -4,6 +4,7 @@ Unit tests for content service handler.
 
 import base64
 import json
+import logging
 import os
 from unittest.mock import MagicMock, patch
 
@@ -187,8 +188,8 @@ class TestContentServiceHandler:
         response = lambda_handler(event, {})
 
         assert response["statusCode"] == 500
-        body = json.loads(response["body"])
-        assert "Internal server error" in body["message"]
+        # No error details are returned to the client
+        assert response["body"] == ""
 
     @patch("boto3.resource")
     @patch("boto3.client")
@@ -321,3 +322,92 @@ class TestContentServiceHandler:
 
         # Verify ZIP was uploaded with only 2 successful photos
         mock_s3.put_object.assert_called_once()
+
+
+class TestContentDoesNotLogPersonalData:
+    """US-005: DNI, name, raw credentials and per-user S3 keys must never be written to the logs."""
+
+    DNI = "12345678A"
+    NAME = "TestUser"
+    REQUEST_ID = "c0ffee00-1234-5678-9abc-def012345678"
+
+    def _event(self) -> tuple[dict, str]:
+        encoded = base64.b64encode(f"{self.DNI}:{self.NAME}".encode()).decode()
+        event = {
+            "headers": {"Authorization": f"Basic {encoded}"},
+            "requestContext": {"requestId": self.REQUEST_ID},
+        }
+        return event, encoded
+
+    def _mock_aws(self, mock_boto_client, mock_boto_resource, photos, zip_cached=False):
+        from botocore.exceptions import ClientError
+
+        mock_table = MagicMock()
+        mock_boto_resource.return_value.Table.return_value = mock_table
+        mock_table.get_item.return_value = {"Item": {"photos": photos}} if photos else {}
+
+        mock_s3 = MagicMock()
+        mock_boto_client.return_value = mock_s3
+        mock_s3.exceptions.NoSuchKey = type("NoSuchKey", (Exception,), {})
+        if zip_cached:
+            mock_s3.head_object.return_value = {}
+        else:
+            mock_s3.head_object.side_effect = ClientError({"Error": {"Code": "404"}}, "HeadObject")
+
+        def get_object(Bucket, Key):
+            if Key.endswith("missing.jpg"):
+                raise mock_s3.exceptions.NoSuchKey()
+            if Key.endswith("broken.jpg"):
+                raise RuntimeError(f"boom on {Key}")
+            return {"Body": MagicMock(read=lambda: b"data")}
+
+        mock_s3.get_object.side_effect = get_object
+        mock_s3.generate_presigned_url.return_value = "https://signed"
+
+    def _assert_not_logged(self, caplog, encoded):
+        for secret in (self.DNI, self.NAME, encoded):
+            assert secret not in caplog.text
+
+    @pytest.mark.parametrize(
+        ("photos", "zip_cached"),
+        [
+            pytest.param(["TestUser/photo1.jpg", "TestUser/missing.jpg", "TestUser/broken.jpg"], False, id="build-zip"),
+            pytest.param(["TestUser/photo1.jpg"], True, id="cached-zip"),
+            pytest.param(["TestUser/missing.jpg"], False, id="all-photos-missing"),
+            pytest.param([], False, id="no-photos"),
+        ],
+    )
+    @patch("boto3.resource")
+    @patch("boto3.client")
+    def test_personal_data_not_logged(
+        self, mock_boto_client, mock_boto_resource, mock_env_vars, caplog, photos, zip_cached
+    ):
+        caplog.set_level(logging.DEBUG)
+        self._mock_aws(mock_boto_client, mock_boto_resource, photos, zip_cached)
+        event, encoded = self._event()
+
+        lambda_handler(event, {})
+
+        self._assert_not_logged(caplog, encoded)
+
+    @patch("boto3.resource")
+    def test_personal_data_not_logged_on_unexpected_error(self, mock_boto_resource, mock_env_vars, caplog):
+        caplog.set_level(logging.DEBUG)
+        mock_boto_resource.return_value.Table.return_value.get_item.side_effect = Exception(f"boom on {self.NAME}")
+        event, encoded = self._event()
+
+        lambda_handler(event, {})
+
+        self._assert_not_logged(caplog, encoded)
+
+    @patch("boto3.resource")
+    @patch("boto3.client")
+    def test_request_id_is_logged(self, mock_boto_client, mock_boto_resource, mock_env_vars, caplog):
+        """The API Gateway request id is logged so a request can be traced without personal data."""
+        caplog.set_level(logging.INFO)
+        self._mock_aws(mock_boto_client, mock_boto_resource, [])
+        event, _ = self._event()
+
+        lambda_handler(event, {})
+
+        assert self.REQUEST_ID in caplog.text
